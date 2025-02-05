@@ -1,27 +1,30 @@
-const mongoose = require('mongoose');
+module.exports = (sequelize, DataTypes) => {
+  const User = sequelize.define('User', {
+    username: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+      validate: {
+        notEmpty: true
+      }
+    },
+    password: {
+      type: DataTypes.STRING,
+      allowNull: false
+    },
+    nickname: {
+      type: DataTypes.STRING,
+      allowNull: false
+    },
+    totalAsset: {
+      type: DataTypes.DECIMAL(10, 2),
+      defaultValue: 10000.00
+    },
+    inGame: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    }
+  });
 
-const userSchema = new mongoose.Schema({
-  username: {
-    type: String,
-    required: true,
-    unique: true
-  },
-  password: {
-    type: String,
-    required: true
-  },
-  nickname: {
-    type: String,
-    required: true
-  },
-  totalAsset: {
-    type: Number,
-    default: 100000
-  },
-  inGame: {
-    type: Boolean,
-    default: false
-  }
-});
-
-module.exports = mongoose.model('User', userSchema); 
+  return User;
+}; 

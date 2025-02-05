@@ -2,7 +2,7 @@ const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
 const cors = require('cors');
-const mongoose = require('mongoose');
+const { sequelize } = require('./models');
 const dotenv = require('dotenv');
 
 dotenv.config();
@@ -11,10 +11,18 @@ const config = require('./config');
 const gameController = require('./controllers/gameController');
 const userController = require('./controllers/userController');
 
-// 连接MongoDB
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('MongoDB connected'))
-  .catch(err => console.error('MongoDB connection error:', err));
+// 替换 MongoDB 连接代码
+sequelize.authenticate()
+  .then(() => {
+    console.log('PostgreSQL connected');
+    return sequelize.sync(); // 在开发环境使用
+  })
+  .then(() => {
+    console.log('Database synchronized');
+  })
+  .catch(err => {
+    console.error('Database connection error:', err);
+  });
 
 const app = express();
 app.use(cors());
