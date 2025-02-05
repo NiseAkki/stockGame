@@ -1,87 +1,115 @@
-const User = require('../models/User');
+const { User } = require('../models');
 const config = require('../config');
 const bcrypt = require('bcrypt');
 
 class UserController {
   async register(username, password, nickname) {
     try {
+      console.log('开始注册流程:', { username, nickname });
+
       // 检查用户名是否已存在
-      const existingUser = await User.findOne({ username });
+      const existingUser = await User.findOne({ 
+        where: { username },
+        raw: true 
+      });
+      
+      console.log('检查用户名存在:', { exists: !!existingUser });
+      
       if (existingUser) {
-        throw new Error('用户名已存在');
+        return {
+          success: false,
+          message: '用户名已存在'
+        };
       }
 
       // 密码加密
       const hashedPassword = await bcrypt.hash(password, 10);
+      console.log('密码加密完成');
 
-      // 创建新用户，并发放初始资金（等同于门票费用）
+      // 创建新用户
       const user = await User.create({
         username,
         password: hashedPassword,
         nickname,
-        totalAsset: config.entryFee // 初始资金等同于门票费用
+        totalAsset: config.initialAsset,
+        cash: config.initialAsset,
+        inGame: false
       });
+
+      console.log('用户创建成功:', { userId: user.id });
 
       return {
         success: true,
         user: {
-          id: user._id,
+          id: user.id,
           username: user.username,
           nickname: user.nickname,
-          totalAsset: user.totalAsset
-        },
-        message: `注册成功！您获得了 ¥${config.entryFee} 的新手奖励`
+          totalAsset: user.totalAsset,
+          cash: user.cash
+        }
       };
     } catch (error) {
+      console.error('注册错误详情:', error);
       return {
         success: false,
-        message: error.message
+        message: error.name === 'SequelizeUniqueConstraintError' 
+          ? '用户名已存在' 
+          : '注册失败，请稍后重试'
       };
     }
   }
 
   async login(username, password) {
     try {
-      const user = await User.findOne({ username });
+      // 使用 Sequelize 查询语法
+      const user = await User.findOne({ 
+        where: { username }
+      });
+      
       if (!user) {
-        throw new Error('用户名或密码错误');
+        return {
+          success: false,
+          message: '用户名或密码错误'
+        };
       }
 
       const isValidPassword = await bcrypt.compare(password, user.password);
       if (!isValidPassword) {
-        throw new Error('用户名或密码错误');
+        return {
+          success: false,
+          message: '用户名或密码错误'
+        };
       }
 
       return {
         success: true,
         user: {
-          id: user._id,
+          id: user.id,  // 使用 Sequelize 的 id 而不是 _id
           username: user.username,
           nickname: user.nickname,
           totalAsset: user.totalAsset
         }
       };
     } catch (error) {
+      console.error('登录错误:', error);
       return {
         success: false,
-        message: error.message
+        message: '登录失败，请稍后重试'
       };
     }
   }
 
   // 检查用户资金是否不足并发放补助
   async checkAndProvideFunds(userId) {
-    const user = await User.findById(userId);
+    const user = await User.findByPk(userId);
     if (!user) return;
 
     if (user.totalAsset < config.entryFee) {
-      // 如果用户资金不足以支付入场费，发放补助
-      await User.updateOne(
-        { _id: userId },
-        { $set: { totalAsset: config.entryFee } }
-      );
+      // 使用 Sequelize 更新语法
+      await user.update({ 
+        totalAsset: config.entryFee 
+      });
 
-      // 返回补助信息
       return {
         type: 'bonus',
         message: `系统已为您补助 ¥${config.entryFee} 的游戏资金`,

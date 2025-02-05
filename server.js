@@ -15,7 +15,8 @@ const userController = require('./controllers/userController');
 sequelize.authenticate()
   .then(() => {
     console.log('PostgreSQL connected');
-    return sequelize.sync(); // 在开发环境使用
+    // 强制重新创建表
+    return sequelize.sync({ force: true }); 
   })
   .then(() => {
     console.log('Database synchronized');
@@ -30,9 +31,29 @@ app.use(express.json());
 
 // API路由
 app.post('/api/register', async (req, res) => {
-  const { username, password, nickname } = req.body;
-  const result = await userController.register(username, password, nickname);
-  res.json(result);
+  try {
+    const { username, password, nickname } = req.body;
+    if (!username || !password || !nickname) {
+      console.log('缺少必要字段:', { username: !!username, password: !!password, nickname: !!nickname });
+      return res.status(400).json({
+        success: false,
+        message: '请填写所有必要信息'
+      });
+    }
+
+    console.log('收到注册请求:', { username, nickname });
+    
+    const result = await userController.register(username, password, nickname);
+    console.log('注册结果:', result);
+    
+    res.json(result);
+  } catch (error) {
+    console.error('注册错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '注册失败: ' + error.message
+    });
+  }
 });
 
 app.post('/api/login', async (req, res) => {
@@ -73,7 +94,10 @@ app.get('/api/test', async (req, res) => {
 });
 
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
+const wss = new WebSocket.Server({ 
+  server,
+  path: '/'  // 使用根路径
+});
 
 // 存储所有连接的客户端
 const clients = new Map();
@@ -162,7 +186,10 @@ wss.on('connection', (ws) => {
     }
   });
 
-  // 处理连接关闭
+  ws.on('error', (error) => {
+    console.error('WebSocket错误:', error);
+  });
+
   ws.on('close', () => {
     console.log('客户端断开连接');
     clients.delete(clientId);

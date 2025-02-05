@@ -1,12 +1,11 @@
-module.exports = (sequelize, DataTypes) => {
+const { DataTypes } = require('sequelize');
+
+module.exports = (sequelize) => {
   const User = sequelize.define('User', {
     username: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true,
-      validate: {
-        notEmpty: true
-      }
+      unique: true
     },
     password: {
       type: DataTypes.STRING,
@@ -18,10 +17,17 @@ module.exports = (sequelize, DataTypes) => {
     },
     totalAsset: {
       type: DataTypes.DECIMAL(10, 2),
-      defaultValue: 10000.00
+      allowNull: false,
+      defaultValue: 100000.00
+    },
+    cash: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      defaultValue: 100000.00
     },
     inGame: {
       type: DataTypes.BOOLEAN,
+      allowNull: false,
       defaultValue: false
     }
   });
