@@ -66,19 +66,18 @@ class GameController {
 
   // 更新股价
   async updateStockPrices() {
-    const newPrices = this.currentGame.stockPrices.map(stock => ({
-      code: stock.code,
-      price: this.calculateNewPrice(stock.price),
-      timestamp: new Date()
-    }));
+    const stockPrices = await StockPrice.findAll({
+      where: { gameId: this.currentGame.id }
+    });
 
-    await Game.updateOne(
-      { _id: this.currentGame._id },
-      { 
-        $set: { stockPrices: newPrices },
-        $inc: { currentRound: 1 }
-      }
-    );
+    await Promise.all(stockPrices.map(stock => 
+      stock.update({
+        price: this.calculateNewPrice(stock.price),
+        updatedAt: new Date()
+      })
+    ));
+
+    await this.currentGame.increment('currentRound');
   }
 
   // 计算新股价
@@ -92,23 +91,26 @@ class GameController {
 
   // 检查游戏是否可以开始
   async checkGameStart() {
-    const game = await Game.findById(this.currentGame._id);
-    if (game.status === 'waiting' && 
-        game.players.length >= game.minPlayers) {
+    const playerCount = await Position.count({
+      where: { gameId: this.currentGame.id },
+      distinct: true,
+      col: 'userId'
+    });
+
+    if (this.currentGame.status === 'waiting' && 
+        playerCount >= this.currentGame.minPlayers) {
       await this.startGame();
     }
   }
 
   // 开始游戏
   async startGame() {
-    await Game.updateOne(
-      { _id: this.currentGame._id },
-      { 
-        status: 'running',
-        startTime: new Date(),
-        nextRoundTime: new Date(Date.now() + config.roundInterval * 1000)
-      }
-    );
+    const now = new Date();
+    await this.currentGame.update({
+      status: 'running',
+      startTime: now,
+      nextRoundTime: new Date(now.getTime() + config.roundInterval * 1000)
+    });
     this.startGameLoop();
   }
 
@@ -131,50 +133,44 @@ class GameController {
     clearInterval(this.gameInterval);
     
     // 结算所有玩家
-    const game = await Game.findById(this.currentGame._id);
-    for (const player of game.players) {
-      await this.settlePlayer(player);
+    const positions = await Position.findAll({
+      where: { gameId: this.currentGame.id },
+      include: [User]
+    });
+
+    const players = [...new Set(positions.map(p => p.User))];
+    for (const player of players) {
+      await this.settlePlayer(player, positions);
     }
 
-    await Game.updateOne(
-      { _id: this.currentGame._id },
-      { 
-        status: 'finished',
-        endTime: new Date()
-      }
-    );
+    await this.currentGame.update({
+      status: 'finished',
+      endTime: new Date()
+    });
 
     // 创建新游戏
     setTimeout(() => this.createNewGame(), config.matchInterval * 1000);
   }
 
   // 结算玩家
-  async settlePlayer(player) {
-    let finalAmount = player.cash;
-    
-    // 计算持仓价值
-    for (const position of player.positions) {
-      const stockPrice = this.currentGame.stockPrices.find(
-        s => s.code === position.code
-      );
+  async settlePlayer(user, positions) {
+    const userPositions = positions.filter(p => p.userId === user.id);
+    const stockPrices = await StockPrice.findAll({
+      where: { gameId: this.currentGame.id }
+    });
+
+    let finalAmount = user.cash;
+    for (const position of userPositions) {
+      const stockPrice = stockPrices.find(s => s.code === position.code);
       finalAmount += stockPrice.price * position.quantity;
     }
 
-    // 更新玩家总资产并发放新一轮的门票费用
-    await User.updateOne(
-      { _id: player.userId },
-      { 
-        $inc: { 
-          totalAsset: finalAmount,
-          // 额外发放一笔等同于门票费用的资金
-          totalAsset: config.entryFee 
-        },
-        $set: { inGame: false }
-      }
-    );
+    await user.update({
+      totalAsset: user.totalAsset + finalAmount + config.entryFee,
+      inGame: false
+    });
 
-    // 发送通知给客户端
-    this.notifyPlayer(player.userId, {
+    this.notifyPlayer(user.id, {
       type: 'bonus',
       message: `游戏结束！您获得了 ¥${config.entryFee} 的奖励金`,
       amount: config.entryFee
