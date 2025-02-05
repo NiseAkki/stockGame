@@ -1,5 +1,5 @@
 {
-  "name": "stock-game",
+  "name": "stockGame",
   "version": "1.0.0",
   "description": "多人在线炒股游戏",
   "main": "server.js",
@@ -25,5 +25,9 @@
   },
   "engines": {
     "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NiseAkki/stockGame.git"
   }
 } 
