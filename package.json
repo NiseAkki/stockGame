@@ -6,8 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "build": "cd client && npm install --save-dev webpack-cli && npm run build",
-    "heroku-postbuild": "cd client && npm install --save-dev webpack-cli && npm run build"
+    "build": "cd client && npm install && NODE_ENV=production npm run build",
+    "heroku-postbuild": "cd client && npm install && NODE_ENV=production npm run build"
   },
   "keywords": [],
   "author": "",
