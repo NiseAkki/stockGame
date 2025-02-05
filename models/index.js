@@ -1,16 +1,20 @@
 const { Sequelize } = require('sequelize');
 const config = require('../config');
 
-const sequelize = new Sequelize(process.env.DATABASE_URL, {
-  dialect: 'postgres',
-  ssl: process.env.NODE_ENV === 'production',
-  dialectOptions: process.env.NODE_ENV === 'production' ? {
-    ssl: {
-      require: true,
-      rejectUnauthorized: false
-    }
-  } : {}
-});
+const env = process.env.NODE_ENV || 'development';
+const dbConfig = config.database[env];
+
+let sequelize;
+if (dbConfig.use_env_variable) {
+  sequelize = new Sequelize(process.env[dbConfig.use_env_variable], dbConfig);
+} else {
+  sequelize = new Sequelize(
+    dbConfig.database,
+    dbConfig.username,
+    dbConfig.password,
+    dbConfig
+  );
+}
 
 const db = {};
 db.sequelize = sequelize;

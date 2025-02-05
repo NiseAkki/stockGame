@@ -1,5 +1,4 @@
-const Game = require('../models/Game');
-const User = require('../models/User');
+const { Game, User, Position, StockPrice } = require('../models');
 const config = require('../config');
 
 class GameController {
@@ -11,7 +10,10 @@ class GameController {
 
   // 初始化游戏状态
   async initialize() {
-    const runningGame = await Game.findOne({ status: 'running' });
+    const runningGame = await Game.findOne({
+      where: { status: 'running' }
+    });
+    
     if (runningGame) {
       this.currentGame = runningGame;
       this.resumeGame();
@@ -24,49 +26,42 @@ class GameController {
   async createNewGame() {
     this.currentGame = await Game.create({
       status: 'waiting',
-      stockPrices: config.stockList.map(stock => ({
+      currentRound: 0,
+      startTime: null,
+      endTime: null,
+      nextRoundTime: null
+    });
+
+    // 创建初始股票价格
+    await Promise.all(config.stockList.map(stock => 
+      StockPrice.create({
+        gameId: this.currentGame.id,
         code: stock.code,
         price: this.generateInitialPrice(),
-        timestamp: new Date()
-      }))
-    });
+        priceChange: 0
+      })
+    ));
   }
 
   // 生成初始股价
   generateInitialPrice() {
-    const { min, max } = config.priceRange;
-    return Math.floor(Math.random() * (max - min) + min);
+    return Math.floor(Math.random() * (1000 - 100) + 100);
   }
 
   // 玩家加入游戏
   async joinGame(userId) {
-    const user = await User.findById(userId);
-    if (!user || user.inGame || user.totalAsset < config.entryFee) {
-      throw new Error('无法加入游戏');
-    }
+    const user = await User.findByPk(userId);
+    if (!user || user.inGame) return;
 
-    // 扣除入场费
-    user.totalAsset -= config.entryFee;
-    user.inGame = true;
-    await user.save();
+    await Position.bulkCreate(config.stockList.map(stock => ({
+      userId,
+      gameId: this.currentGame.id,
+      code: stock.code,
+      quantity: 0,
+      averagePrice: 0
+    })));
 
-    // 添加玩家到游戏中
-    await Game.updateOne(
-      { _id: this.currentGame._id },
-      {
-        $push: {
-          players: {
-            userId: user._id,
-            nickname: user.nickname,
-            cash: config.entryFee,
-            positions: []
-          }
-        }
-      }
-    );
-
-    // 检查是否可以开始游戏
-    await this.checkGameStart();
+    await user.update({ inGame: true });
   }
 
   // 更新股价
