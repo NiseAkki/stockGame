@@ -1,5 +1,5 @@
 {
-  "name": "stock-game-client",
+  "name": "stockGame-client",
   "version": "1.0.0",
   "private": true,
   "dependencies": {
@@ -19,6 +19,7 @@
   },
   "scripts": {
     "start": "webpack serve --mode development --open",
-    "build": "webpack --mode production"
+    "build": "webpack --mode production",
+    "install-deps": "npm install --save-dev webpack-cli"
   }
 } 

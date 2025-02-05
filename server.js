@@ -41,6 +41,37 @@ app.post('/api/login', async (req, res) => {
   res.json(result);
 });
 
+app.get('/api/test', async (req, res) => {
+  try {
+    // 测试数据库连接
+    await sequelize.authenticate();
+    
+    // 尝试创建一个测试用户
+    const testUser = await sequelize.models.User.create({
+      username: `test_${Date.now()}`,
+      password: 'test123',
+      nickname: '测试用户',
+      totalAsset: 10000
+    });
+
+    // 删除测试用户
+    await testUser.destroy();
+
+    res.json({
+      success: true,
+      message: '服务器和数据库连接正常',
+      dbStatus: 'connected'
+    });
+  } catch (error) {
+    console.error('测试连接失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '连接测试失败',
+      error: error.message
+    });
+  }
+});
+
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
