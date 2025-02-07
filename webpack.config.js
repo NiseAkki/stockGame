@@ -1,5 +1,12 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const webpack = require('webpack');
+const dotenv = require('dotenv');
+
+// 加载环境变量
+const env = dotenv.config({
+  path: path.resolve(__dirname, '.env.development')
+}).parsed;
 
 module.exports = {
   entry: './src/index.js',
@@ -29,6 +36,9 @@ module.exports = {
   plugins: [
     new HtmlWebpackPlugin({
       template: './public/index.html'
+    }),
+    new webpack.DefinePlugin({
+      'process.env': JSON.stringify(env || {})
     })
   ],
   devServer: {

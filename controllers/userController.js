@@ -31,8 +31,8 @@ class UserController {
         username,
         password: hashedPassword,
         nickname,
-        totalAsset: config.initialAsset,
-        cash: config.initialAsset,
+        totalAsset: 10000,
+        cash: 0,
         inGame: false
       });
 
@@ -45,7 +45,8 @@ class UserController {
           username: user.username,
           nickname: user.nickname,
           totalAsset: user.totalAsset,
-          cash: user.cash
+          cash: user.cash,
+          inGame: false
         }
       };
     } catch (error) {
@@ -69,7 +70,7 @@ class UserController {
       if (!user) {
         return {
           success: false,
-          message: '用户名或密码错误'
+          message: '用户不存在，请先注册'
         };
       }
 
@@ -77,17 +78,18 @@ class UserController {
       if (!isValidPassword) {
         return {
           success: false,
-          message: '用户名或密码错误'
+          message: '密码错误'
         };
       }
 
       return {
         success: true,
         user: {
-          id: user.id,  // 使用 Sequelize 的 id 而不是 _id
+          id: user.id,
           username: user.username,
           nickname: user.nickname,
-          totalAsset: user.totalAsset
+          totalAsset: user.totalAsset,
+          cash: user.cash
         }
       };
     } catch (error) {

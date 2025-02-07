@@ -20,46 +20,120 @@ const Input = styled.input`
   border-radius: 5px;
 `;
 
+const ErrorMessage = styled.div`
+  color: red;
+  margin: 10px 0;
+`;
+
+const SwitchButton = styled.button`
+  background: none;
+  border: none;
+  color: #2196f3;
+  cursor: pointer;
+  margin-top: 10px;
+  text-decoration: underline;
+`;
+
 const LoginForm = ({ onLogin }) => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [isLogin, setIsLogin] = useState(true);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({
+    username: '',
+    password: '',
+    nickname: ''
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setLoading(true);
+
     try {
-      const result = await authService.login(username, password);
-      if (result.success) {
-        onLogin(result.user);
+      // 基本验证
+      if (!form.username || !form.password) {
+        throw new Error('请填写用户名和密码');
+      }
+
+      if (!isLogin && !form.nickname) {
+        throw new Error('请填写昵称');
+      }
+
+      if (form.username.length < 3) {
+        throw new Error('用户名至少需要3个字符');
+      }
+
+      // 发送请求
+      const response = isLogin
+        ? await authService.login(form.username, form.password)
+        : await authService.register(form.username, form.password, form.nickname);
+
+      if (response.success) {
+        onLogin(response.user);
       } else {
-        setError(result.message);
+        setError(response.message || '操作失败');
       }
     } catch (err) {
-      setError('登录失败，请稍后重试');
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleChange = (e) => {
+    setForm(prev => ({
+      ...prev,
+      [e.target.name]: e.target.value
+    }));
   };
 
   return (
     <LoginContainer>
-      <h2>登录</h2>
-      {error && <div style={{ color: 'red' }}>{error}</div>}
+      <h2>{isLogin ? '登录' : '注册'}</h2>
+      {error && <ErrorMessage>{error}</ErrorMessage>}
+      
       <form onSubmit={handleSubmit}>
         <Input
+          name="username"
           type="text"
           placeholder="用户名"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
+          value={form.username}
+          onChange={handleChange}
+          disabled={loading}
         />
         <Input
+          name="password"
           type="password"
           placeholder="密码"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          value={form.password}
+          onChange={handleChange}
+          disabled={loading}
         />
-        <Button variant="primary" type="submit">
-          登录
+        {!isLogin && (
+          <Input
+            name="nickname"
+            type="text"
+            placeholder="昵称"
+            value={form.nickname}
+            onChange={handleChange}
+            disabled={loading}
+          />
+        )}
+        <Button 
+          type="submit" 
+          variant="primary"
+          disabled={loading}
+        >
+          {loading ? '处理中...' : (isLogin ? '登录' : '注册')}
         </Button>
       </form>
+
+      <SwitchButton 
+        onClick={() => !loading && setIsLogin(!isLogin)}
+        disabled={loading}
+      >
+        {isLogin ? '没有账号？点击注册' : '已有账号？点击登录'}
+      </SwitchButton>
     </LoginContainer>
   );
 };

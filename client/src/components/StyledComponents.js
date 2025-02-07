@@ -1,5 +1,16 @@
 import styled from 'styled-components';
 
+// 主题色彩
+export const theme = {
+  primary: '#FF6B6B',     // 活力红
+  secondary: '#4ECDC4',   // 清新蓝绿
+  accent: '#FFE66D',      // 明亮黄
+  background: '#F7F7F7',  // 浅灰背景
+  text: '#2C3E50',        // 深色文字
+  rise: '#FF4444',        // 上涨红
+  fall: '#00AA00',        // 下跌绿
+};
+
 export const GameContainer = styled.div`
   max-width: 1200px;
   margin: 0 auto;
@@ -16,8 +27,9 @@ export const Card = styled.div`
 
 export const StockGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 15px;
+  margin: 20px 0;
 `;
 
 export const StockCard = styled(Card)`
@@ -39,7 +51,7 @@ export const StockCard = styled(Card)`
 
     .price-change {
       font-size: 14px;
-      color: ${props => props.priceChange >= 0 ? '#4caf50' : '#f44336'};
+      color: ${props => props.$priceChange >= 0 ? '#FF4444' : '#00AA00'};
       margin-left: 5px;
     }
   }
@@ -87,5 +99,112 @@ export const Button = styled.button`
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+`;
+
+export const GameLayout = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 20px;
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 20px;
+
+  .main-content {
+    min-width: 0;
+    padding-bottom: 40px;
+  }
+`;
+
+export const LeaderboardCard = styled(Card)`
+  position: sticky;
+  top: 20px;
+  height: fit-content;
+  background: #FFF9C4;  // 淡黄色背景
+  border: 3px solid #FFB74D;  // 橙色边框
+  border-radius: 15px;
+  box-shadow: 0 4px 0 #FFB74D;
+
+  h2 {
+    color: #FF6B6B;
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 24px;
+    text-shadow: 1px 1px 0 #FFB74D;
+  }
+
+  .leaderboard-list {
+    .leader-item {
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      margin-bottom: 8px;
+      background: rgba(255, 255, 255, 0.7);
+      border-radius: 10px;
+      transition: transform 0.2s;
+
+      &:hover {
+        transform: translateX(5px);
+      }
+
+      .rank {
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: ${props => {
+          if (props.$rank === 1) return '#FFD700';  // 金
+          if (props.$rank === 2) return '#C0C0C0';  // 银
+          if (props.$rank === 3) return '#CD7F32';  // 铜
+          return '#E0E0E0';
+        }};
+        border-radius: 50%;
+        margin-right: 10px;
+        font-weight: bold;
+        color: white;
+        font-size: 14px;
+      }
+
+      .player-info {
+        flex: 1;
+
+        .nickname {
+          font-weight: bold;
+          color: #2C3E50;
+        }
+
+        .total-value {
+          font-size: 14px;
+          color: #FF6B6B;
+        }
+      }
+    }
+  }
+`;
+
+export const MatchInterval = styled(Card)`
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  padding: 20px 40px;
+  background: ${props => props.theme.accent};
+  border: 3px solid ${props => props.theme.primary};
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  text-align: center;
+  
+  .message {
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: ${props => props.theme.text};
+  }
+  
+  .timer {
+    font-size: 24px;
+    font-weight: bold;
+    color: ${props => props.theme.primary};
   }
 `; 
