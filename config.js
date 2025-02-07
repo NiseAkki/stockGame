@@ -1,8 +1,8 @@
 module.exports = {
   // 游戏配置
-  maxRounds: 2,           // 每局游戏回合数
-  roundInterval: 10,       // 每回合间隔（秒）
-  matchInterval: 20,       // 对局间隔（秒）
+  maxRounds: 10,           // 每局游戏回合数
+  roundInterval: 30,       // 每回合间隔（秒）
+  matchInterval: 60,       // 对局间隔（秒）
   entryFee: 1000,        // 入场费
   
   // 股票配置
