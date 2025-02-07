@@ -1,12 +1,12 @@
 const config = {
   // 游戏基础设置
-  initialAsset: 10000,         // 初始总资产改为10000
+  initialAsset: 1000,         // 初始总资产改为10000
   entryFee: 1000,             // 游戏入场费改为1000
   
   // 对局设置
-  maxRounds: 20,               // 最大回合数
-  roundInterval: 30,           // 回合间隔(秒)
-  matchInterval: 300,          // 对局间隔(秒)
+  maxRounds: 10,               // 最大回合数
+  roundInterval: 60,           // 回合间隔(秒)
+  matchInterval: 60,          // 对局间隔(秒)
   
   // 股票设置
   stockList: [
