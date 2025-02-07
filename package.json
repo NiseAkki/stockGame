@@ -6,8 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "build": "cd client && CI=true npm install --include=dev && npm run build && mkdir -p ../public && cp -r build/* ../public/",
-    "heroku-postbuild": "cd client && CI=true npm install --include=dev && npm run build && mkdir -p ../public && cp -r build/* ../public/"
+    "build": "cd client && CI=true npm install --include=dev && npm run build && mkdir -p ../public && cp -r dist/* ../public/",
+    "heroku-postbuild": "cd client && CI=true npm install --include=dev && npm run build && mkdir -p ../public && cp -r dist/* ../public/"
   },
   "keywords": [],
   "author": "",
