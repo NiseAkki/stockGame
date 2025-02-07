@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const http = require('http');
 const WebSocket = require('ws');
 const cors = require('cors');
@@ -46,7 +47,7 @@ const app = express();
 // 在 app.use(cors()) 之前添加
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
-    ? 'https://your-production-domain.com' 
+    ? 'https://stockgame-mntf.onrender.com' 
     : 'http://localhost:3000',
   credentials: true,
   methods: ['GET', 'POST'],
@@ -55,6 +56,9 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(express.json());
+
+// 添加静态文件服务
+app.use(express.static(path.join(__dirname, 'public')));
 
 // API路由
 app.post('/api/register', async (req, res) => {
@@ -707,4 +711,9 @@ const gameStateMessage = {
     // ... 其他游戏状态信息 ...
     otherPlayers  // 添加这个字段
   }
-}; 
+};
+
+// 所有其他请求都返回 index.html
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+}); 
