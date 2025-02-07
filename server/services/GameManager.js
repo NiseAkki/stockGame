@@ -26,8 +26,8 @@ class GameManager {
     
     // 重置游戏状态，直接设置为 running
     this.gameState = {
-      status: 'running',  // 直接设置为 running，不需要 waiting 状态
-      currentRound: 1,    // 直接从第一回合开始
+      status: 'running',
+      currentRound: 1,
       nextRoundTime: Date.now() + (config.roundInterval * 1000),
       isSettling: false,
       leaderboard: []
@@ -54,13 +54,21 @@ class GameManager {
       const activePlayers = Array.from(playerManager.players.entries())
         .filter(([_, player]) => player.inGame);
 
+      console.log('排行榜更新 - 活跃玩家:', activePlayers.map(([clientId, player]) => ({
+        clientId,
+        nickname: playerManager.userInfo.get(clientId)?.nickname,
+        inGame: player.inGame,
+        cash: player.cash,
+        positions: player.positions
+      })));
+
       // 计算每个玩家的总资产并排序
       const leaderboard = activePlayers
         .map(([clientId, player]) => {
           const totalValue = this.calculatePlayerValue(player);
           const userInfo = playerManager.userInfo.get(clientId);
           
-          return {
+          const entry = {
             clientId,
             nickname: userInfo?.nickname || '未知玩家',
             totalValue,
@@ -70,14 +78,18 @@ class GameManager {
               return total + (pos.quantity * (stock?.price || 0));
             }, 0)
           };
+
+          console.log('排行榜条目:', entry);
+          return entry;
         })
         .sort((a, b) => b.totalValue - a.totalValue)
         .slice(0, 10);
 
       this.gameState.leaderboard = leaderboard;
+      console.log('最终排行榜:', this.gameState.leaderboard);
       
-      // 不触发任何计时器相关的操作
-      // 只更新排行榜数据
+      // 立即广播更新后的游戏状态
+      this.notifyUpdate();
     } catch (error) {
       console.error('更新排行榜时出错:', error);
     }
@@ -91,12 +103,6 @@ class GameManager {
       // 更新股票价格
       this.updateStockPrices();
       
-      // 更新排行榜
-      if (this.playerManager) {
-        console.log('回合结束，更新排行榜');
-        this.updateLeaderboard(this.playerManager);
-      }
-
       // 检查是否达到最大回合数
       if (this.gameState.currentRound >= config.maxRounds) {
         this.endGame();
@@ -106,6 +112,12 @@ class GameManager {
       // 增加回合数并设置下一回合结束时间
       this.gameState.currentRound++;
       this.gameState.nextRoundTime = Date.now() + (config.roundInterval * 1000);
+      
+      // 在每回合开始时更新排行榜
+      if (this.playerManager) {
+        console.log(`第 ${this.gameState.currentRound} 回合开始，更新排行榜`);
+        this.updateLeaderboard(this.playerManager);
+      }
       
       console.log(`开始第 ${this.gameState.currentRound} 回合，将在 ${config.roundInterval} 秒后结束`);
       
@@ -283,6 +295,13 @@ class GameManager {
   // 添加：设置 playerManager 的方法
   setPlayerManager(manager) {
     this.playerManager = manager;
+  }
+
+  // 修改：玩家加入游戏时的处理
+  handlePlayerJoin(playerManager, clientId) {
+    // 只在玩家加入时更新一次排行榜
+    this.updateLeaderboard(playerManager);
+    this.notifyUpdate();
   }
 }
 

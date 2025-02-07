@@ -104,7 +104,7 @@ class PlayerManager {
       const finalValue = player.cash + positionValue;
       
       // 更新总资产（加上游戏收益和新门票）
-      user.totalAsset += finalValue + config.entryFee;  // 加上新门票钱
+      user.totalAsset += finalValue + config.entryFee;
       
       console.log(`玩家 ${user.nickname} 游戏结束清算:`, {
         cash: player.cash,
@@ -178,11 +178,6 @@ class PlayerManager {
     } else {
       throw new Error('无效的交易类型');
     }
-
-    console.log('交易完成:', {
-      cash: player.cash,
-      position: position
-    });
 
     return {
       newCash: player.cash,

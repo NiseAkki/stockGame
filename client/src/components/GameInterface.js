@@ -207,6 +207,7 @@ const GameInterface = ({ user }) => {
         status: newState.status,
         currentRound: newState.currentRound,
         nextRoundTime: newState.nextRoundTime,
+        leaderboard: newState.leaderboard,  // 确保这里正确接收排行榜数据
         stocks: Array.isArray(newState.stocks) ? newState.stocks.map(stock => ({
           ...stock,
           price: Number(stock.price),
@@ -215,9 +216,9 @@ const GameInterface = ({ user }) => {
           averagePrice: Number(stock.averagePrice) || 0
         })) : prev.stocks,
         playerInfo: {
-          ...prev.playerInfo, // 保留现有的 playerInfo
-          ...(newState.playerInfo || {}), // 合并新的 playerInfo
-          nickname: newState.playerInfo?.nickname || prev.playerInfo.nickname, // 确保保留昵称
+          ...prev.playerInfo,
+          ...(newState.playerInfo || {}),
+          nickname: newState.playerInfo?.nickname || prev.playerInfo.nickname,
           totalAsset: Number(newState.playerInfo?.totalAsset) || prev.playerInfo.totalAsset,
           cash: Number(newState.playerInfo?.cash) || 0,
           inGame: Boolean(newState.playerInfo?.inGame)

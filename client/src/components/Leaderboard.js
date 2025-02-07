@@ -2,7 +2,15 @@ import React from 'react';
 import { LeaderboardCard } from './StyledComponents';
 
 const Leaderboard = ({ gameState }) => {
-  // 直接使用服务器计算好的排行榜数据
+  // 添加调试日志
+  React.useEffect(() => {
+    console.log('Leaderboard 组件收到的数据:', {
+      leaderboard: gameState.leaderboard,
+      status: gameState.status,
+      playerInfo: gameState.playerInfo
+    });
+  }, [gameState]);
+
   const leaderboard = gameState.leaderboard || [];
 
   return (
@@ -11,7 +19,7 @@ const Leaderboard = ({ gameState }) => {
       <div className="leaderboard-list">
         {leaderboard.length > 0 ? (
           leaderboard.map((player, index) => (
-            <div key={player.nickname} className="leader-item">
+            <div key={`${player.clientId}-${index}`} className="leader-item">
               <div className="rank">{index + 1}</div>
               <div className="player-info">
                 <div className="nickname">
@@ -19,7 +27,8 @@ const Leaderboard = ({ gameState }) => {
                   {player.clientId === gameState.playerInfo?.clientId && ' (你)'}
                 </div>
                 <div className="total-value">
-                  ¥{player.totalValue.toFixed(2)}
+                  <span>总资产: ¥{player.totalValue.toFixed(2)}</span>
+                  <span style={{ marginLeft: '10px' }}>现金: ¥{player.cash.toFixed(2)}</span>
                 </div>
               </div>
             </div>
