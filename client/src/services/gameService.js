@@ -34,8 +34,8 @@ class GameService {
 
     try {
       const wsUrl = process.env.NODE_ENV === 'production'
-        ? config.server.production.wsUrl
-        : config.server.development.wsUrl;
+        ? 'wss://stockgame-mntf.onrender.com'
+        : 'ws://localhost:8080';
       console.log('开始连接WebSocket:', wsUrl);
       
       await new Promise((resolve, reject) => {

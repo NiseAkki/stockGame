@@ -11,7 +11,9 @@ const getApiUrl = () => {
 
 class AuthService {
   constructor() {
-    this.baseUrl = `http://${window.location.hostname}:8080/api`;
+    this.baseUrl = process.env.NODE_ENV === 'production'
+      ? 'https://stockgame-mntf.onrender.com/api'
+      : 'http://localhost:8080/api';
   }
 
   async login(username, password) {
