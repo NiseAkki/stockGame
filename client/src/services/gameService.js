@@ -16,6 +16,7 @@ class GameService {
     this.reconnectTimeout = null;
     this.isConnecting = false;
     this.connectionAttempts = 0;
+    this.loadGameState();
   }
 
   async connect(user) {
@@ -57,10 +58,14 @@ class GameService {
 
           if (this.user) {
             console.log('发送用户初始化信息:', this.user);
-            this.ws.send(JSON.stringify({
-              type: 'init',
-              user: this.user
-            }));
+            const savedState = this.loadGameState();
+            if (savedState) {
+              this.ws.send(JSON.stringify({
+                type: 'init',
+                user: this.user,
+                savedState: savedState
+              }));
+            }
           }
           resolve();
         };
@@ -109,8 +114,10 @@ class GameService {
 
       switch (data.type) {
         case 'gameState':
-          if (data.payload.status === 'finished' && this.user?.inGame) {
+          this.saveGameState(data.payload);
+          if (data.payload.status === 'finished') {
             console.log('游戏结束，等待结算');
+            localStorage.removeItem('gameState');
           }
           this.callbacks.onGameStateUpdate?.(data.payload);
           break;
@@ -122,7 +129,32 @@ class GameService {
           break;
         case 'settlement':
           console.log('收到结算结果');
-          this.callbacks.onSettlement?.(data);
+          const settlementData = data.payload;
+          
+          localStorage.removeItem('gameState');
+          
+          const user = this.user;
+          if (user) {
+            user.totalAsset = settlementData.totalAsset;
+            user.cash = settlementData.cash;
+            
+            if (settlementData.totalAsset < config.entryFee) {
+              console.log('资产不足，等待系统补助');
+            }
+            
+            localStorage.setItem('user', JSON.stringify(user));
+          }
+          
+          this.callbacks.onSettlement?.(settlementData);
+          break;
+        case 'bonus':
+          console.log('收到补助:', data.payload);
+          if (this.user) {
+            this.user.totalAsset = data.payload.newTotalAsset;
+            this.user.cash = data.payload.newCash;
+            localStorage.setItem('user', JSON.stringify(this.user));
+          }
+          this.callbacks.onBonus?.(data.payload);
           break;
         case 'error':
           this.callbacks.onError?.(data.message);
@@ -223,6 +255,34 @@ class GameService {
       console.log('准备重新连接');
       this.attemptReconnect();
     }
+  }
+
+  saveGameState(gameState) {
+    if (gameState) {
+      if (gameState.status === 'running') {
+        localStorage.setItem('gameState', JSON.stringify({
+          inGame: gameState.playerInfo?.inGame || false,
+          cash: gameState.playerInfo?.cash || 0,
+          positions: gameState.playerInfo?.positions || [],
+          timestamp: Date.now()
+        }));
+      } else if (gameState.status === 'finished') {
+        localStorage.removeItem('gameState');
+      }
+    }
+  }
+
+  loadGameState() {
+    const savedState = localStorage.getItem('gameState');
+    if (savedState) {
+      const state = JSON.parse(savedState);
+      if (Date.now() - state.timestamp < 24 * 60 * 60 * 1000) {
+        return state;
+      } else {
+        localStorage.removeItem('gameState');
+      }
+    }
+    return null;
   }
 }
 

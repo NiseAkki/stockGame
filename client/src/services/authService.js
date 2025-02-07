@@ -16,6 +16,22 @@ class AuthService {
       : 'http://localhost:8080/api';
   }
 
+  // 添加保存用户信息到本地存储的方法
+  saveUserToLocal(userData) {
+    localStorage.setItem('user', JSON.stringify(userData));
+  }
+
+  // 从本地存储获取用户信息
+  getUserFromLocal() {
+    const userData = localStorage.getItem('user');
+    return userData ? JSON.parse(userData) : null;
+  }
+
+  // 清除本地存储的用户信息
+  clearUserFromLocal() {
+    localStorage.removeItem('user');
+  }
+
   async login(username, password) {
     try {
       const response = await fetch(`${this.baseUrl}/login`, {
@@ -30,6 +46,8 @@ class AuthService {
         throw new Error(data.message || '登录失败');
       }
 
+      // 登录成功后保存用户信息
+      this.saveUserToLocal(data.user);
       return data;
     } catch (error) {
       throw new Error(error.message || '登录失败，请稍后重试');
