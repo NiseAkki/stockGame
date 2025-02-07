@@ -1,3 +1,4 @@
+import config from '../config';
 import WS_CONFIG from '../config/websocket';
 
 class GameService {
@@ -37,7 +38,9 @@ class GameService {
     this.user = user;
 
     try {
-      const wsUrl = this.getWebSocketUrl();
+      const wsUrl = process.env.NODE_ENV === 'production'
+        ? config.server.production.wsUrl
+        : config.server.development.wsUrl;
       console.log('开始连接WebSocket:', wsUrl);
       
       await new Promise((resolve, reject) => {

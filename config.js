@@ -47,5 +47,17 @@ module.exports = {
         }
       }
     }
+  },
+
+  // 服务器配置
+  server: {
+    development: {
+      httpUrl: 'http://localhost:8080',
+      wsUrl: 'ws://localhost:8080'
+    },
+    production: {
+      httpUrl: 'https://stockgame-mntf.onrender.com',
+      wsUrl: 'wss://stockgame-mntf.onrender.com'
+    }
   }
 }; 
