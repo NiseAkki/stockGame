@@ -1,5 +1,5 @@
 {
-  "name": "stockGame",
+  "name": "stockgame",
   "version": "1.0.0",
   "description": "多人在线炒股游戏",
   "main": "server.js",
