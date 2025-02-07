@@ -18,6 +18,18 @@ const config = {
     min: 50,                   // 最低股价
     max: 1000,                 // 最高股价
     volatility: 0.1            // 波动幅度 (10%)
+  },
+
+  // 服务器配置
+  server: {
+    development: {
+      httpUrl: 'http://localhost:8080',
+      wsUrl: 'ws://localhost:8080'
+    },
+    production: {
+      httpUrl: 'https://stockgame-mntf.onrender.com',
+      wsUrl: 'wss://stockgame-mntf.onrender.com'
+    }
   }
 };
 

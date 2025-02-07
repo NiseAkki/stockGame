@@ -1,5 +1,4 @@
 import config from '../config';
-import WS_CONFIG from '../config/websocket';
 
 class GameService {
   constructor() {
@@ -17,10 +16,6 @@ class GameService {
     this.reconnectTimeout = null;
     this.isConnecting = false;
     this.connectionAttempts = 0;
-  }
-
-  getWebSocketUrl() {
-    return WS_CONFIG.url;
   }
 
   async connect(user) {
