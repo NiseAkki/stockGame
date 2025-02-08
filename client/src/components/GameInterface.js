@@ -10,6 +10,7 @@ import {
 import gameService from '../services/gameService';
 import config from '../config';
 import Leaderboard from './Leaderboard';
+import FunctionCard from './FunctionCard';
 
 const Header = styled.div`
   display: flex;
@@ -107,6 +108,20 @@ const GameEndDisplay = styled(Card)`
   }
 `;
 
+// 添加新的样式组件
+const GameHeader = styled(Header)`
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 20px;
+  align-items: center;
+`;
+
+const GameControls = styled.div`
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+`;
+
 const GameInterface = ({ user }) => {
   const [gameState, setGameState] = useState({
     status: 'waiting',
@@ -140,6 +155,19 @@ const GameInterface = ({ user }) => {
         console.error('游戏错误:', error);
         setError(error);
         setIsConnected(false);
+      },
+      onSettlement: (data) => {
+        console.log('收到清算结果:', data);
+        // 更新玩家信息
+        setGameState(prev => ({
+          ...prev,
+          playerInfo: {
+            ...prev.playerInfo,
+            totalAsset: data.details.新总资产,
+            cash: 0,
+            inGame: false
+          }
+        }));
       }
     });
 
@@ -201,32 +229,41 @@ const GameInterface = ({ user }) => {
     if (!newState) return;
 
     setGameState(prev => {
-      // 确保保留现有的 playerInfo
-      const updatedState = {
+      // 获取最新的持仓信息
+      const positions = newState.playerInfo?.positions || prev.playerInfo?.positions || [];
+      
+      // 更新股票信息，包含持仓数据
+      const updatedStocks = Array.isArray(newState.stocks) ? 
+        newState.stocks.map(stock => {
+          const position = positions.find(p => p.code === stock.code);
+          return {
+            ...stock,
+            price: Number(stock.price),
+            priceChange: Number(stock.priceChange),
+            position: position ? Number(position.quantity) : 0,
+            averagePrice: position ? Number(position.averagePrice) : 0
+          };
+        }) : prev.stocks;
+
+      // 返回更新后的状态
+      return {
         ...prev,
-        status: newState.status,
-        currentRound: newState.currentRound,
-        nextRoundTime: newState.nextRoundTime,
-        leaderboard: newState.leaderboard,  // 确保这里正确接收排行榜数据
-        stocks: Array.isArray(newState.stocks) ? newState.stocks.map(stock => ({
-          ...stock,
-          price: Number(stock.price),
-          priceChange: Number(stock.priceChange),
-          position: Number(stock.position) || 0,
-          averagePrice: Number(stock.averagePrice) || 0
-        })) : prev.stocks,
+        status: newState.status || prev.status,
+        currentRound: newState.currentRound || prev.currentRound,
+        nextRoundTime: newState.nextRoundTime || prev.nextRoundTime,
+        // 保留现有排行榜数据，除非有新数据
+        leaderboard: newState.leaderboard || prev.leaderboard,
+        stocks: updatedStocks,
         playerInfo: {
           ...prev.playerInfo,
           ...(newState.playerInfo || {}),
-          nickname: newState.playerInfo?.nickname || prev.playerInfo.nickname,
-          totalAsset: Number(newState.playerInfo?.totalAsset) || prev.playerInfo.totalAsset,
-          cash: Number(newState.playerInfo?.cash) || 0,
-          inGame: Boolean(newState.playerInfo?.inGame)
+          nickname: newState.playerInfo?.nickname || prev.playerInfo?.nickname,
+          totalAsset: Number(newState.playerInfo?.totalAsset) || prev.playerInfo?.totalAsset,
+          cash: Number(newState.playerInfo?.cash) || prev.playerInfo?.cash,
+          inGame: newState.playerInfo?.inGame ?? prev.playerInfo?.inGame,
+          positions: positions
         }
       };
-
-      console.log('更新后的游戏状态:', updatedState);
-      return updatedState;
     });
   };
 
@@ -248,15 +285,20 @@ const GameInterface = ({ user }) => {
   };
 
   const handleTradeResult = (result) => {
+    console.log('处理交易结果:', result);  // 添加日志
     if (result.success) {
-      setGameState(prev => ({
-        ...prev,
-        playerInfo: {
-          ...prev.playerInfo,
-          cash: result.newCash,
-          positions: result.newPositions
-        }
-      }));
+      setGameState(prev => {
+        const newState = {
+          ...prev,
+          playerInfo: {
+            ...prev.playerInfo,
+            cash: result.newCash,
+            positions: result.newPositions  // 确保这里使用 newPositions
+          }
+        };
+        console.log('更新后的游戏状态:', newState);  // 添加日志
+        return newState;
+      });
     } else {
       alert(result.message);
     }
@@ -306,7 +348,7 @@ const GameInterface = ({ user }) => {
   return (
     <GameLayout>
       <div className="main-content">
-        <Header>
+        <GameHeader>
           <div className="user-info">
             <span className="nickname">{gameState.playerInfo.nickname}</span>
             <span className="asset">
@@ -316,7 +358,24 @@ const GameInterface = ({ user }) => {
               游戏资金: ¥{(Number(gameState.playerInfo.cash) || 0).toFixed(2)}
             </span>
           </div>
-        </Header>
+          
+          <GameControls>
+            {!gameState.playerInfo.inGame ? (
+              <Button 
+                variant="primary" 
+                onClick={handleJoinGame}
+                disabled={!isConnected || gameState.status === 'finished'}
+              >
+                进入游戏 (¥{config.entryFee})
+              </Button>
+            ) : (
+              <FunctionCard
+                disabled={!gameState.playerInfo?.inGame || gameState.status !== 'running'}
+                gameState={gameState}
+              />
+            )}
+          </GameControls>
+        </GameHeader>
 
         <GameStatus>
           {!gameState.playerInfo.inGame ? (

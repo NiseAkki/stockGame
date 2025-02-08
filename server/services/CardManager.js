@@ -5,20 +5,63 @@ class CardManager {
     this.playerCards = new Map();  // 玩家持有的卡片
     this.activeEffects = new Map(); // 当前生效的卡片效果
     this.gameManager = null;  // 添加对 GameManager 的引用
+    
+    // 按稀有度分组的卡片类型
+    this.cardsByRarity = this.groupCardsByRarity();
   }
 
-  // 初始化玩家的卡片
+  // 添加回初始化玩家的方法
   initializePlayer(clientId) {
     // 只在玩家不存在时初始化，避免清空现有卡片
     if (!this.playerCards.has(clientId)) {
+      console.log(`初始化玩家 ${clientId} 的卡片仓库`);
       this.playerCards.set(clientId, []);
+    }
+  }
+
+  // 按稀有度对卡片进行分组
+  groupCardsByRarity() {
+    const cards = config.cards.types;
+    const grouped = {
+      UR: [],
+      SR: [],
+      R: [],
+      N: []
+    };
+
+    Object.values(cards).forEach(card => {
+      if (grouped[card.rarity]) {
+        grouped[card.rarity].push(card);
+      }
+    });
+
+    return grouped;
+  }
+
+  // 根据概率选择稀有度
+  selectRarity() {
+    const random = Math.random();  // 0-1之间的随机数
+    const distribution = config.cards.rarityDistribution;
+    
+    console.log('抽卡概率:', {
+      随机数: random.toFixed(2),
+      概率分布: distribution
+    });
+
+    if (random < distribution.UR) {
+      return 'UR';
+    } else if (random < distribution.UR + distribution.SR) {
+      return 'SR';
+    } else if (random < distribution.UR + distribution.SR + distribution.R) {
+      return 'R';
+    } else {
+      return 'N';
     }
   }
 
   // 分发卡片
   distributeCards() {
     const { cardsPerRound, maxCards } = config.cards.distribution;
-    const cardTypes = Object.values(config.cards.types);
 
     this.playerCards.forEach((cards, clientId) => {
       // 检查玩家卡片数量是否达到上限
@@ -27,8 +70,17 @@ class CardManager {
         return;
       }
 
-      // 随机选择一张卡片
-      const randomCard = cardTypes[Math.floor(Math.random() * cardTypes.length)];
+      // 选择稀有度
+      const selectedRarity = this.selectRarity();
+      const rarityCards = this.cardsByRarity[selectedRarity];
+
+      if (!rarityCards || rarityCards.length === 0) {
+        console.error(`没有找到 ${selectedRarity} 稀有度的卡片`);
+        return;
+      }
+
+      // 从选定稀有度中随机选择一张卡片
+      const randomCard = rarityCards[Math.floor(Math.random() * rarityCards.length)];
       const newCard = {
         ...randomCard,
         instanceId: `${randomCard.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
@@ -36,7 +88,13 @@ class CardManager {
 
       // 添加到玩家卡片列表末尾
       cards.push(newCard);
-      /*console.log(`给玩家 ${clientId} 发放卡片:`, newCard.name);*/
+
+      console.log(`发放卡片:`, {
+        玩家: clientId,
+        稀有度: selectedRarity,
+        卡片名称: newCard.name,
+        当前持有: cards.length
+      });
 
       // 通知玩家
       if (this.notifyPlayer) {

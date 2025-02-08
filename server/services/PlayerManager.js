@@ -42,9 +42,14 @@ class PlayerManager {
       throw new Error('玩家信息不存在');
     }
 
-    // 检查玩家是否已在游戏中
+    // 如果玩家已经在游戏中，直接返回现有状态
     if (player.inGame) {
-      throw new Error('玩家已在游戏中');
+      console.log(`玩家 ${user.nickname} 已在游戏中，状态:`, {
+        总资产: user.totalAsset,
+        游戏资金: player.cash,
+        游戏状态: this.gameManager?.gameState.status || 'unknown'
+      });
+      return { user, player };
     }
 
     // 检查是否有足够资产
@@ -65,9 +70,9 @@ class PlayerManager {
     }));
 
     console.log(`玩家 ${user.nickname} 加入游戏:`, {
-      initialCash: player.cash,
-      remainingAsset: user.totalAsset,
-      inGame: player.inGame
+      总资产: user.totalAsset,
+      游戏资金: player.cash,
+      游戏状态: this.gameManager?.gameState.status || 'unknown'
     });
     
     // 立即更新排行榜
@@ -104,15 +109,8 @@ class PlayerManager {
       const finalValue = player.cash + positionValue;
       
       // 更新总资产（加上游戏收益和新门票）
+      const oldTotalAsset = user.totalAsset;
       user.totalAsset += finalValue + config.entryFee;
-      
-      console.log(`玩家 ${user.nickname} 游戏结束清算:`, {
-        cash: player.cash,
-        positionValue,
-        finalValue,
-        newEntryFee: config.entryFee,
-        newTotalAsset: user.totalAsset
-      });
 
       // 重置玩家状态
       player.inGame = false;
@@ -123,9 +121,44 @@ class PlayerManager {
         averagePrice: 0
       }));
 
-      // 广播清算结果
-      if (this.gameManager && this.gameManager.ws) {
-        this.broadcastSettlement(this.gameManager.ws, clientId);
+      // 广播清算结果和更新后的游戏状态
+      if (this.gameManager) {
+        const client = this.gameManager.clients?.get(clientId);
+        if (client && client.readyState === 1) { // WebSocket.OPEN
+          // 发送清算结果
+          client.send(JSON.stringify({
+            type: 'settlement',
+            payload: {
+              message: `游戏结束清算结果：\n` +
+                      `持仓市值：¥${positionValue}\n` +
+                      `剩余资金：¥${player.cash}\n` +
+                      `游戏总价值：¥${finalValue}\n` +
+                      `系统发放新门票：¥${config.entryFee}`,
+              details: {
+                原总资产: oldTotalAsset,
+                现金: player.cash,
+                持仓市值: positionValue,
+                游戏收益: finalValue,
+                新门票: config.entryFee,
+                新总资产: user.totalAsset
+              }
+            }
+          }));
+
+          // 立即发送更新后的游戏状态
+          client.send(JSON.stringify({
+            type: 'gameState',
+            payload: {
+              status: this.gameManager.gameState.status,
+              playerInfo: {
+                nickname: user.nickname,
+                totalAsset: user.totalAsset,
+                cash: player.cash,
+                inGame: player.inGame
+              }
+            }
+          }));
+        }
       }
     }
   }
@@ -138,88 +171,79 @@ class PlayerManager {
   }
 
   // 交易管理
-  handleTrade(clientId, { stockCode, action, quantity = 1, currentPrice }) {
+  handleTrade(clientId, tradeInfo) {
+    console.log('PlayerManager开始处理交易:', {
+      clientId,
+      tradeInfo
+    });
+
     const player = this.players.get(clientId);
-    if (!player || !player.inGame) {
-      throw new Error('玩家未在游戏中');
-    }
+    console.log('获取到的玩家信息:', {
+      hasPlayer: !!player,
+      cash: player?.cash,
+      positions: player?.positions
+    });
 
+    const { stockCode, action, quantity, currentPrice } = tradeInfo;
     const position = player.positions.find(p => p.code === stockCode);
-    if (!position) {
-      throw new Error('无效的股票代码');
-    }
-
-    // 确保 quantity 是数字且为 1
-    quantity = 1;
-    const totalCost = Math.floor(currentPrice * quantity);
     
-    console.log('处理交易:', { 
-      action, 
-      stockCode, 
-      quantity, 
-      currentPrice, 
-      totalCost,
-      playerCash: player.cash,
+    console.log('交易前的持仓信息:', {
+      stockCode,
       currentPosition: position
     });
 
     if (action === 'buy') {
-      if (player.cash < totalCost) {
+      // 检查资金是否足够
+      const cost = currentPrice * quantity;
+      console.log('买入前检查:', {
+        cost,
+        playerCash: player.cash,
+        sufficient: player.cash >= cost
+      });
+
+      if (player.cash < cost) {
         throw new Error('资金不足');
       }
-      
-      this.executeBuy(player, position, quantity, currentPrice, totalCost);
+
+      // 更新现金和持仓
+      player.cash -= cost;
+      position.quantity += quantity;
+      position.averagePrice = position.quantity === 0 ? 
+        currentPrice : 
+        ((position.averagePrice * (position.quantity - quantity) + cost) / position.quantity);
+
+      console.log('买入后的状态:', {
+        newCash: player.cash,
+        newQuantity: position.quantity,
+        newAveragePrice: position.averagePrice
+      });
     } else if (action === 'sell') {
+      // 检查持仓是否足够
       if (position.quantity < quantity) {
         throw new Error('持仓不足');
       }
-      
-      this.executeSell(player, position, quantity, totalCost);
+
+      // 更新现金和持仓
+      const income = currentPrice * quantity;
+      player.cash += income;
+      position.quantity -= quantity;
+      // 卖出时不更新均价
+
     } else {
       throw new Error('无效的交易类型');
     }
 
+    // 保存更新后的玩家状态
+    this.players.set(clientId, player);
+    console.log('交易完成后的玩家状态:', {
+      cash: player.cash,
+      positions: player.positions
+    });
+
     return {
       newCash: player.cash,
-      newPosition: position,
-      message: `${action === 'buy' ? '买入' : '卖出'}成功`
+      newPosition: position
     };
-  }
-
-  // 交易执行
-  executeBuy(player, position, quantity, price, totalCost) {
-    // 确保所有数值都是整数
-    price = Math.floor(price);
-    totalCost = Math.floor(totalCost);
-    
-    if (position.quantity === 0) {
-      position.averagePrice = price;
-    } else {
-      position.averagePrice = Math.floor(
-        (position.averagePrice * position.quantity + totalCost) / 
-        (position.quantity + quantity)
-      );
-    }
-    
-    position.quantity += quantity;
-    player.cash -= totalCost;
-    
-    // 添加日志
-    console.log('买入执行:', {
-      price,
-      totalCost,
-      newQuantity: position.quantity,
-      newCash: player.cash,
-      newAveragePrice: position.averagePrice
-    });
-  }
-
-  executeSell(player, position, quantity, totalCost) {
-    position.quantity -= quantity;
-    player.cash += totalCost;
-    if (position.quantity === 0) {
-      position.averagePrice = 0;
-    }
   }
 
   // 修改：广播清算信息

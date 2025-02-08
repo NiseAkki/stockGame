@@ -121,7 +121,7 @@ class GameManager {
       this.gameState.currentRound++;
       this.gameState.nextRoundTime = Date.now() + (config.roundInterval * 1000);
       
-      console.log(`开始第 ${this.gameState.currentRound}/${config.maxRounds} 回合，将在 ${config.roundInterval} 秒后结束`);
+      //console.log(`开始第 ${this.gameState.currentRound}/${config.maxRounds} 回合，将在 ${config.roundInterval} 秒后结束`);
       
       // 处理功能卡效果
       cardManager.processEffects(this.gameState);
@@ -191,7 +191,7 @@ class GameManager {
     this.stockPrices.forEach((_, code) => {
       const currentProb = this.stockProbabilities.get(code);
       this.stockProbabilities.set(code, 0.50);
-      console.log(`重置股票 ${code} 的概率为 0.50 (原概率: ${currentProb})`);
+      //console.log(`重置股票 ${code} 的概率为 0.50 (原概率: ${currentProb})`);
     });
 
     // 4. 更新排行榜
@@ -258,14 +258,14 @@ class GameManager {
 
   // 修改：启动对局间隔计时
   startMatchInterval() {
-    console.log(`下一局将在 ${config.matchInterval} 秒后开始`);
+    //console.log(`下一局将在 ${config.matchInterval} 秒后开始`);
     
     if (this.matchTimer) {
       clearTimeout(this.matchTimer);
     }
     
     this.matchTimer = setTimeout(() => {
-      console.log('对局间隔结束，开始新游戏循环');
+      //console.log('对局间隔结束，开始新游戏循环');
       this.startNewGame();
     }, config.matchInterval * 1000);
   }
@@ -332,52 +332,52 @@ class GameManager {
         // 冻结状态
         newPrice = oldPrice;
         priceDirection = '冻结';
-        console.log(`股票 ${code} 价格更新:`, {
-          概率: probability,
-          强制变动: '冻结',
-          随机值: '无',
-          方向: priceDirection,
-          旧价格: oldPrice,
-          新价格: newPrice
-        });
+        //console.log(`股票 ${code} 价格更新:`, {
+        //  概率: probability,
+        //  强制变动: '冻结',
+        //  随机值: '无',
+        //  方向: priceDirection,
+        //  旧价格: oldPrice,
+        //  新价格: newPrice
+        //});
       } else if (probability < 0.5) {
         // 强制下跌
         newPrice = Math.floor(oldPrice * 0.9);
         priceDirection = '强制下跌';
-        console.log(`股票 ${code} 价格更新:`, {
-          概率: probability,
-          强制变动: '强制下跌',
-          随机值: '无',
-          方向: priceDirection,
-          旧价格: oldPrice,
-          新价格: newPrice
-        });
+        //console.log(`股票 ${code} 价格更新:`, {
+        //  概率: probability,
+        //  强制变动: '强制下跌',
+        //  随机值: '无',
+        //  方向: priceDirection,
+        //  旧价格: oldPrice,
+        //  新价格: newPrice
+        //});
       } else if (probability > 0.5) {
         // 强制上涨
         newPrice = Math.floor(oldPrice * 1.1);
         priceDirection = '强制上涨';
-        console.log(`股票 ${code} 价格更新:`, {
-          概率: probability,
-          强制变动: '强制上涨',
-          随机值: '无',
-          方向: priceDirection,
-          旧价格: oldPrice,
-          新价格: newPrice
-        });
+        //console.log(`股票 ${code} 价格更新:`, {
+        //  概率: probability,
+        //  强制变动: '强制上涨',
+        //  随机值: '无',
+        //  方向: priceDirection,
+        //  旧价格: oldPrice,
+        //  新价格: newPrice
+        //});
       } else {
         // 自然波动 (probability = 0.5)
         randomValue = Math.random();
         const isUpward = randomValue < 0.5;
         newPrice = Math.floor(oldPrice * (isUpward ? 1.1 : 0.9));
         priceDirection = isUpward ? '自然上涨' : '自然下跌';
-        console.log(`股票 ${code} 价格更新:`, {
-          概率: probability,
-          强制变动: '无',
-          随机值: randomValue,
-          方向: priceDirection,
-          旧价格: oldPrice,
-          新价格: newPrice
-        });
+        //console.log(`股票 ${code} 价格更新:`, {
+        //  概率: probability,
+        //  强制变动: '无',
+        //  随机值: randomValue,
+        //  方向: priceDirection,
+        //  旧价格: oldPrice,
+        //  新价格: newPrice
+        //});
       }
 
       this.stockPrices.set(code, {

@@ -1,8 +1,8 @@
 module.exports = {
   // 游戏配置 - 根据环境设置不同参数
-  maxRounds: process.env.NODE_ENV === 'production' ? 10 : 3,           // 生产环境10回合，测试环境5回合
-  roundInterval: process.env.NODE_ENV === 'production' ? 60 : 10,      // 生产环境60秒，测试环境10秒
-  matchInterval: process.env.NODE_ENV === 'production' ? 60 : 10,      // 生产环境60秒，测试环境10秒
+  maxRounds: process.env.NODE_ENV === 'production' ? 60 : 10,           // 生产环境10回合，测试环境5回合
+  roundInterval: process.env.NODE_ENV === 'production' ? 60 : 5,      // 生产环境60秒，测试环境10秒
+  matchInterval: process.env.NODE_ENV === 'production' ? 300 : 10,      // 生产环境60秒，测试环境10秒
   entryFee: 1000,        // 入场费
   
   // 股票配置
@@ -145,7 +145,7 @@ module.exports = {
       FORCE_RISE: {
         id: 'FORCE_RISE',
         name: '涨涨涨',
-        rarity: 'R',
+        rarity: 'N',
         target: 'stock',
         duration: 1,
         effect: '选择一支股票，使其下回合必定上涨。',
@@ -154,7 +154,7 @@ module.exports = {
       FORCE_FALL: {
         id: 'FORCE_FALL',
         name: '跌跌跌',
-        rarity: 'R',
+        rarity: 'N',
         target: 'stock',
         duration: 1,
         timing: 'next',
@@ -163,7 +163,7 @@ module.exports = {
       PRICE_FREEZE: {
         id: 'PRICE_FREEZE',
         name: '车门焊死谁也别跑',
-        rarity: 'UR',
+        rarity: 'SR',
         target: 'stock',
         duration: 1,
         timing: 'next',
@@ -172,7 +172,7 @@ module.exports = {
       SMALL_MONEY: {
         id: 'SMALL_MONEY',
         name: 'V我50',
-        rarity: 'SR',
+        rarity: 'R',
         target: 'player',
         duration: 1,
         timing: 'current',
@@ -191,7 +191,7 @@ module.exports = {
 
     distribution: {
       cardsPerRound: 1,  // 每回合发放卡片数量
-      maxCards: 3        // 玩家最多持有卡片数量
+      maxCards: 10        // 玩家最多持有卡片数量
     }
   }
 }; 
