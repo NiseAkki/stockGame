@@ -4,12 +4,12 @@ const config = {
   entryFee: 1000,             // 游戏入场费
   
   // 对局设置
-  maxRounds: process.env.NODE_ENV === 'production' ? 60 : 5,           // 生产环境60回合，测试环境5回合
-  roundInterval: process.env.NODE_ENV === 'production' ? 60 : 10,      // 生产环境60秒，测试环境10秒
-  matchInterval: process.env.NODE_ENV === 'production' ? 300 : 10,     // 生产环境300秒，测试环境10秒
+  maxRounds: 60,              // 统一设置为60回合
+  roundInterval: 60,          // 统一设置为60秒
+  matchInterval: 300,         // 统一设置为300秒
   
   // 股票设置
-  stockList: process.env.NODE_ENV === 'production' ? [
+  stockList: [
     { 
       code: 'XLS', 
       name: '熊力斯',
@@ -27,8 +27,7 @@ const config = {
       name: '巨硬科技',
       volatility: 0.2,
       upwardBias: 0.50
-    }
-  ] : [  // 测试环境只显示3支股票
+    },
     { 
       code: 'TZKJ', 
       name: '腾子科技',
