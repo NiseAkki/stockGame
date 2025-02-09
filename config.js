@@ -1,143 +1,80 @@
-module.exports = {
-  // 游戏配置 - 根据环境设置不同参数
-  maxRounds: process.env.NODE_ENV === 'production' ? 60 : 10,           // 生产环境10回合，测试环境5回合
-  roundInterval: process.env.NODE_ENV === 'production' ? 60 : 5,      // 生产环境60秒，测试环境10秒
-  matchInterval: process.env.NODE_ENV === 'production' ? 300 : 10,      // 生产环境60秒，测试环境10秒
-  entryFee: 1000,        // 入场费
+const config = {
+  // 游戏基础设置
+  initialAsset: 1000,         // 初始总资产
+  entryFee: 1000,             // 游戏入场费
   
-  // 股票配置
+  // 对局设置
+  maxRounds: process.env.NODE_ENV === 'production' ? 60 : 5,           // 生产环境60回合，测试环境5回合
+  roundInterval: process.env.NODE_ENV === 'production' ? 60 : 10,      // 生产环境60秒，测试环境10秒
+  matchInterval: process.env.NODE_ENV === 'production' ? 300 : 10,     // 生产环境300秒，测试环境10秒
+  
+  // 股票设置
   stockList: process.env.NODE_ENV === 'production' ? [
     { 
-      code: 'AAPL', 
-      name: '苹果',
-      volatility: 0.15,    // 较稳定
-      upwardBias: 0.50     // 所有股票的基础涨跌概率设为50%
+      code: 'XLS', 
+      name: '熊力斯',
+      volatility: 0.4,    // 较稳定
+      upwardBias: 0.50     // 基础涨跌概率
     },
     { 
-      code: 'GOOGL', 
-      name: '谷歌',
+      code: 'FTMT', 
+      name: '飞天谋台',
       volatility: 0.18,
       upwardBias: 0.50
     },
     { 
-      code: 'MSFT', 
-      name: '微软',
-      volatility: 0.16,
+      code: 'JYKJ', 
+      name: '巨硬科技',
+      volatility: 0.2,
       upwardBias: 0.50
-    },
-    { 
-      code: 'TSLA', 
-      name: '特斯拉',
-      volatility: 0.25,    // 波动较大
-      upwardBias: 0.50     // 所有股票的基础涨跌概率设为50%
-    },
-    { 
-      code: 'META', 
-      name: 'Meta',
-      volatility: 0.20,
-      upwardBias: 0.50
-    },
-    { 
-      code: 'BABA', 
-      name: '阿里巴巴',
-      volatility: 0.22,
-      upwardBias: 0.50
-    },
-    { 
-      code: 'NFLX', 
-      name: '奈飞',
-      volatility: 0.21,
-      upwardBias: 0.50
-    },
-    { 
-      code: 'AMZN', 
-      name: '亚马逊',
-      volatility: 0.19,
-      upwardBias: 0.50
-    },
-    { 
-      code: '700', 
-      name: '腾讯',
-      volatility: 0.20,
-      upwardBias: 0.50
-    },
-    { 
-      code: 'NVDA', 
-      name: '英伟达',
-      volatility: 0.23,    // 波动较大
-      upwardBias: 0.50     // 所有股票的基础涨跌概率设为50%
     }
   ] : [  // 测试环境只显示3支股票
     { 
-      code: 'AAPL', 
-      name: '苹果',
-      volatility: 0.15,
+      code: 'TZKJ', 
+      name: '腾子科技',
+      volatility: 0.25,
       upwardBias: 0.50
     },
     { 
-      code: 'GOOGL', 
-      name: '谷歌',
+      code: 'ALMM', 
+      name: '阿里麻麻',
+      volatility: 0.25,
+      upwardBias: 0.50
+    },
+    { 
+      code: 'SZTD', 
+      name: '数字跳动',
+      volatility: 0.2,
+      upwardBias: 0.50
+    },
+    { 
+      code: 'BYD', 
+      name: '比样德',
+      volatility: 0.2,
+      upwardBias: 0.50
+    },
+    { 
+      code: 'JZ', 
+      name: '橘子',
       volatility: 0.18,
       upwardBias: 0.50
     },
     { 
-      code: 'MSFT', 
-      name: '微软',
-      volatility: 0.16,
+      code: 'ZYHG', 
+      name: '中远海狗',
+      volatility: 0.18,
       upwardBias: 0.50
     }
   ],
-  
-  // 价格配置
-  priceRange: {
-    min: 50,             // 最低价格
-    max: 200,            // 最高价格
-    volatility: 0.2      // 波动率（0-1）
-  },
-  initialAsset: 2000,         // 初始总资产
-  database: {
-    development: {
-      use_env_variable: 'DATABASE_URL',
-      dialect: 'postgres',
-      dialectOptions: {
-        ssl: {
-          require: true,
-          rejectUnauthorized: false
-        }
-      }
-    },
-    production: {
-      use_env_variable: 'DATABASE_URL',
-      dialect: 'postgres',
-      dialectOptions: {
-        ssl: {
-          require: true,
-          rejectUnauthorized: false
-        }
-      }
-    }
-  },
 
-  // 服务器配置
-  server: {
-    development: {
-      httpUrl: 'http://localhost:8080',
-      wsUrl: 'ws://localhost:8080'
-    },
-    production: {
-      httpUrl: 'https://stockgame-mntf.onrender.com',
-      wsUrl: 'wss://stockgame-mntf.onrender.com'
-    }
-  },
-
-  // 功能卡配置
+  // 功能卡设置
   cards: {
     // 稀有度概率分布
     rarityDistribution: {
-      UR: 0.05,    // 0 ~ 0.05     (5%)
-      SR: 0.15,    // 0.05 ~ 0.2   (15%)
-      R: 0.3,      // 0.2 ~ 0.5    (30%)
-      N: 0.5       // 0.5 ~ 1      (50%)
+      UR: 0.05,    // 0 ~ 0.05
+      SR: 0.15,    // 0.05 ~ 0.15
+      R: 0.3,      // 0.15 ~ 0.3
+      N: 0.5       // 0.3 ~ 1
     },
 
     // 卡片类型模板
@@ -193,5 +130,60 @@ module.exports = {
       cardsPerRound: 1,  // 每回合发放卡片数量
       maxCards: 10        // 玩家最多持有卡片数量
     }
+  },
+
+  // 抽奖系统配置
+  luckyDraw: {
+    cost: 648,  // 抽奖费用
+    prizes: [
+      { id: 1, name: '神秘奖品', probability: 0.5 },
+      { id: 2, name: '神秘奖品', probability: 0.3 },
+      { id: 3, name: '神秘奖品', probability: 0.2 }
+    ]
+  },
+
+  // 服务器配置
+  server: {
+    development: {
+      httpUrl: 'http://localhost:8080',
+      wsUrl: 'ws://localhost:8080'
+    },
+    production: {
+      httpUrl: 'https://stockgame-mntf.onrender.com',
+      wsUrl: 'wss://stockgame-mntf.onrender.com'
+    }
+  },
+
+  // 数据库配置
+  database: {
+    development: {
+      use_env_variable: 'DATABASE_URL',
+      dialect: 'postgres',
+      dialectOptions: {
+        ssl: {
+          require: true,
+          rejectUnauthorized: false
+        }
+      }
+    },
+    production: {
+      use_env_variable: 'DATABASE_URL',
+      dialect: 'postgres',
+      dialectOptions: {
+        ssl: {
+          require: true,
+          rejectUnauthorized: false
+        }
+      }
+    }
+  },
+
+  // 价格配置
+  priceRange: {
+    min: 50,             // 最低价格
+    max: 1000,            // 最高价格
+    volatility: 0.2      // 波动率（0-1）
   }
-}; 
+};
+
+module.exports = config; 
