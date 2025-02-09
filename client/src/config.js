@@ -1,12 +1,12 @@
 const config = {
   // 游戏基础设置
-  initialAsset: 1000,         // 初始总资产改为10000
-  entryFee: 1000,             // 游戏入场费改为1000
+  initialAsset: 1000,         // 初始总资产
+  entryFee: 1000,             // 游戏入场费
   
-  // 对局设置
-  maxRounds: 10,               // 最大回合数
-  roundInterval: 60,           // 回合间隔(秒)
-  matchInterval: 60,          // 对局间隔(秒)
+  // 对局设置 - 根据环境设置不同参数
+  maxRounds: process.env.NODE_ENV === 'production' ? 60 : 5,           // 生产环境60回合，测试环境5回合
+  roundInterval: process.env.NODE_ENV === 'production' ? 60 : 10,      // 生产环境60秒，测试环境10秒
+  matchInterval: process.env.NODE_ENV === 'production' ? 300 : 10,     // 生产环境300秒，测试环境10秒
   
   // 股票设置
   stockList: [
@@ -18,6 +18,16 @@ const config = {
     min: 50,                   // 最低股价
     max: 1000,                 // 最高股价
     volatility: 0.1            // 波动幅度 (10%)
+  },
+
+  // 抽奖系统配置
+  luckyDraw: {
+    cost: 648,  // 抽奖费用
+    prizes: [
+      { id: 1, name: '神秘奖品', probability: 0.5 },
+      { id: 2, name: '神秘奖品', probability: 0.3 },
+      { id: 3, name: '神秘奖品', probability: 0.2 }
+    ]
   },
 
   // 服务器配置

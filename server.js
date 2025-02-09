@@ -9,6 +9,8 @@ const bcrypt = require('bcrypt');
 const gameManager = require('./server/services/GameManager');
 const playerManager = require('./server/services/PlayerManager');
 const { v4: uuidv4 } = require('uuid');
+const cardManager = require('./server/services/CardManager');
+const bodyParser = require('body-parser');
 
 dotenv.config();
 
@@ -28,101 +30,98 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('未处理的 Promise 拒绝:', reason);
 });
 
-// 替换 MongoDB 连接代码
-sequelize.authenticate()
-  .then(() => {
-    console.log('PostgreSQL connected');
-    // 在开发环境使用 force 同步，但要小心使用
-    return sequelize.sync({ force: true, logging: console.log }); 
-  })
-  .then(() => {
-    console.log('Database synchronized');
-  })
-  .catch(err => {
-    console.error('Database connection error:', err.stack);
-  });
-
-const app = express();
-
-// 在 app.use(cors()) 之前添加
-const corsOptions = {
-  origin: process.env.NODE_ENV === 'production'
-    ? 'https://stockgame-mntf.onrender.com'
-    : 'http://localhost:3000',
-  credentials: true,
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type', 'Accept']
+// 修改数据库连接部分
+const sequelizeConfig = {
+  dialect: 'postgres',
+  host: process.env.DB_HOST || 'localhost',
+  port: process.env.DB_PORT || 5432,
+  username: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD || 'your_password',
+  database: process.env.DB_NAME || 'stockgame',
+  logging: false,
+  pool: {
+    max: 5,
+    min: 0,
+    acquire: 30000,
+    idle: 10000
+  },
+  retry: {
+    match: [
+      /SequelizeConnectionError/,
+      /SequelizeConnectionRefusedError/,
+      /SequelizeHostNotFoundError/,
+      /SequelizeHostNotReachableError/,
+      /SequelizeInvalidConnectionError/,
+      /SequelizeConnectionTimedOutError/,
+      /TimeoutError/,
+      /ECONNRESET/
+    ],
+    max: 3
+  }
 };
 
-app.use(cors(corsOptions));
-app.use(express.json());
+// 添加连接重试逻辑
+const connectWithRetry = async () => {
+  let retries = 5;
+  while (retries > 0) {
+    try {
+      await sequelize.authenticate();
+      console.log('PostgreSQL connected successfully');
+      
+      // 在开发环境使用 force 同步
+      if (process.env.NODE_ENV !== 'production') {
+        await sequelize.sync({ force: true });
+        console.log('Database synchronized');
+      }
+      
+      break;
+    } catch (err) {
+      retries -= 1;
+      console.error('Database connection error:', err);
+      console.log(`Retries left: ${retries}`);
+      if (retries === 0) {
+        console.error('Max retries reached, exiting...');
+        process.exit(1);
+      }
+      // 等待5秒后重试
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    }
+  }
+};
 
-// 添加静态文件服务
+// 创建 Express 应用
+const app = express();
+
+// 添加中间件
+app.use(cors());
+app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // API路由
 app.post('/api/register', async (req, res) => {
   try {
-    const { username, password, nickname } = req.body;
-    console.log('收到注册请求:', { username, nickname });
-    
-    // 基本验证
-    if (!username || !password || !nickname) {
-      console.log('缺少必要字段');
+    const { nickname } = req.body;
+    // 简单的验证
+    if (!nickname || nickname.length < 2 || nickname.length > 10) {
       return res.status(400).json({
         success: false,
-        message: '请填写所有必填字段'
+        message: '昵称长度必须在2-10个字符之间'
       });
     }
 
-    // 检查用户名是否已存在
-    const existingUser = await sequelize.models.User.findOne({ 
-      where: { username } 
-    });
-
-    console.log('检查用户名是否存在:', { exists: !!existingUser });
-
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: '用户名已存在'
-      });
-    }
-
-    // 密码加密
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // 创建新用户
-    const user = await sequelize.models.User.create({
-      username,
-      password: hashedPassword,
+    // 生成初始用户数据
+    const userData = {
       nickname,
       totalAsset: config.initialAsset,
-      cash: 0,
-      inGame: false
-    });
+      registeredAt: new Date()
+    };
 
-    console.log('用户创建成功:', {
-      id: user.id,
-      username: user.username,
-      nickname: user.nickname
-    });
-
-    // 修复：确保返回完整的用户信息
     res.json({
       success: true,
-      user: {
-        id: user.id,
-        username: user.username,
-        nickname: user.nickname,
-        totalAsset: user.totalAsset,
-        cash: user.cash,
-        inGame: user.inGame
-      }
+      user: userData
     });
-
   } catch (error) {
-    console.error('注册错误:', error);
+    console.error('注册失败:', error);
     res.status(500).json({
       success: false,
       message: '注册失败，请稍后重试'
@@ -207,6 +206,9 @@ app.get('/api/test', async (req, res) => {
 // 创建 HTTP 服务器
 const server = http.createServer(app);
 
+// 添加 WebSocket 客户端映射
+const clients = new Map();
+
 // 创建 WebSocket 服务器
 const wss = new WebSocket.Server({ 
   server,
@@ -222,50 +224,76 @@ wss.on('error', (error) => {
 
 // WebSocket 连接处理
 wss.on('connection', (ws, req) => {
+  // 确保每个连接都有一个唯一的 clientId
   const clientId = req.headers['sec-websocket-key'];
-  ws.clientId = clientId;
-  console.log(`新客户端连接: ${clientId}`);
+  ws.clientId = clientId;  // 将 clientId 存储在 ws 对象上
+  clients.set(clientId, ws);
 
-  // 设置心跳检测
+  console.log(`新的WebSocket连接: ${clientId}`);
+
+  // 添加心跳检测
   ws.isAlive = true;
   ws.on('pong', () => {
     ws.isAlive = true;
   });
 
-  // 发送连接成功消息
-  ws.send(JSON.stringify({
-    type: 'system',
-    message: '连接成功'
-  }));
-
-  // 发送当前游戏状态
-  gameManager.broadcastGameState(
-    new Map([[clientId, ws]]), 
-    playerManager
-  );
-
   // 消息处理
   ws.on('message', async (message) => {
     try {
       const data = JSON.parse(message);
-      console.log('收到消息:', data);
+      console.log('收到WebSocket消息:', { clientId: ws.clientId, type: data.type });
 
       switch (data.type) {
         case 'init':
-          if (data.user) {
-            playerManager.addPlayer(clientId, data.user);
-            console.log('用户信息已初始化:', data.user);
+          try {
+            if (data.user) {
+              // 检查是否有保存的状态
+              const savedPlayer = playerManager.players.get(ws.clientId);
+              if (savedPlayer && savedPlayer.inGame) {
+                console.log(`恢复玩家状态: ${data.user.nickname}`);
+              } else {
+                playerManager.addPlayer(ws.clientId, data.user);
+                console.log(`玩家初始化成功: ${data.user.nickname}`);
+              }
+              
+              ws.send(JSON.stringify({
+                type: 'initSuccess',
+                message: '初始化成功'
+              }));
+
+              // 广播最新游戏状态
+              broadcastGameState();
+            } else {
+              throw new Error('缺少用户信息');
+            }
+          } catch (error) {
+            console.error('处理初始化消息时出错:', error);
+            ws.send(JSON.stringify({
+              type: 'error',
+              message: error.message
+            }));
           }
           break;
 
         case 'joinGame':
           try {
-            // 处理玩家加入游戏
-            handleJoinGame(ws, clientId);
-            // 只更新排行榜，不重置计时器
-            gameManager.updateLeaderboard(playerManager);
-            // 只向所有客户端广播更新后的游戏状态
-            broadcastToAll();
+            // 确保玩家已经初始化
+            if (!playerManager.players.has(ws.clientId)) {
+              throw new Error('请先初始化玩家信息');
+            }
+
+            const { user, player } = playerManager.joinGame(ws.clientId);
+            console.log(`玩家 ${user.nickname} 加入游戏，扣除入场费 ${config.entryFee}`);
+            
+            // 发送加入成功消息
+            ws.send(JSON.stringify({
+              type: 'joinGameSuccess',
+              message: '成功加入游戏'
+            }));
+
+            // 更新排行榜和游戏状态
+            gameManager.handlePlayerJoin(playerManager, ws.clientId);
+            broadcastGameState();
           } catch (error) {
             console.error('处理玩家加入游戏时出错:', error);
             ws.send(JSON.stringify({
@@ -275,51 +303,98 @@ wss.on('connection', (ws, req) => {
           }
           break;
 
-        case 'trade':
-          handleTrade(ws, clientId, data);
+        case 'useCard':
+          try {
+            // 确保玩家已经初始化
+            if (!playerManager.players.has(ws.clientId)) {
+              throw new Error('请先初始化玩家信息');
+            }
+
+            const success = cardManager.useCard(ws.clientId, data.cardId, data.targetId);
+            if (success) {
+              broadcastGameState();
+            }
+          } catch (error) {
+            console.error('处理使用卡片时出错:', error);
+            ws.send(JSON.stringify({
+              type: 'error',
+              message: error.message
+            }));
+          }
           break;
+
+        case 'getCards':
+          try {
+            // 确保玩家已经初始化
+            if (!playerManager.players.has(ws.clientId)) {
+              throw new Error('请先初始化玩家信息');
+            }
+
+            const cards = cardManager.getPlayerCards(ws.clientId);
+            ws.send(JSON.stringify({
+              type: 'cards',
+              cards: cards
+            }));
+          } catch (error) {
+            console.error('获取卡片时出错:', error);
+            ws.send(JSON.stringify({
+              type: 'error',
+              message: error.message
+            }));
+          }
+          break;
+
+        case 'trade':
+          handleTrade(ws, ws.clientId, data);
+          break;
+
+        default:
+          console.log('未知的消息类型:', data.type);
       }
     } catch (error) {
-      console.error('处理消息错误:', error);
+      console.error('处理WebSocket消息时出错:', error);
       ws.send(JSON.stringify({
         type: 'error',
-        message: '服务器处理消息出错'
+        message: '消息处理失败'
       }));
     }
   });
 
-  // 错误处理
-  ws.on('error', (error) => {
-    console.error(`客户端 ${clientId} 错误:`, error);
-  });
-
-  // 关闭处理
+  // 修改断开连接处理
   ws.on('close', () => {
-    console.log(`客户端断开连接: ${clientId}`);
-    playerManager.removePlayer(clientId);
+    console.log(`WebSocket连接关闭: ${ws.clientId}`);
+    // 直接从客户端列表中移除
+    clients.delete(ws.clientId);
   });
 });
 
-// 心跳检测
-const interval = setInterval(() => {
+// 修改心跳检测定时器
+const heartbeat = setInterval(() => {
   wss.clients.forEach((ws) => {
     if (ws.isAlive === false) {
-      console.log('检测到死连接，关闭');
+      console.log(`检测到无响应连接: ${ws.clientId}`);
       return ws.terminate();
     }
+    
     ws.isAlive = false;
-    ws.ping();
+    ws.ping(() => {});
   });
 }, 30000);
 
-// 清理
+// 清理心跳检测
 wss.on('close', () => {
-  clearInterval(interval);
+  clearInterval(heartbeat);
 });
 
 // 在初始化部分
 gameManager.setPlayerManager(playerManager);
+gameManager.setClients(clients);
 playerManager.setGameManager(gameManager);
+cardManager.setPlayerManager(playerManager);
+cardManager.setGameManager(gameManager);
+
+// 在所有依赖设置完成后，初始化游戏管理器
+gameManager.initialize();
 
 // 在处理玩家加入游戏后
 wss.on('connection', (ws, req) => {
@@ -328,7 +403,7 @@ wss.on('connection', (ws, req) => {
   ws.on('message', async (message) => {
     const data = JSON.parse(message);
     if (data.type === 'joinGame') {
-      handleJoinGame(ws, clientId);
+      handleJoinGame(ws, ws.clientId);
       // 玩家加入后立即更新排行榜
       gameManager.updateLeaderboard(playerManager);
       broadcastToAll();
@@ -384,14 +459,14 @@ function broadcastToAll() {
 }
 
 // 启动服务器
-const PORT = process.env.PORT || 8080;
-server.listen(PORT, () => {
-  console.log(`服务器运行在端口 ${PORT}`);
-  // 只初始化游戏，不开始回合
-  gameManager.startNewGame();
-  // 立即进行一次广播
-  broadcastToAll();
-});
+function startServer() {
+  const port = process.env.PORT || 8080;
+  server.listen(port, () => {
+    console.log(`服务器运行在端口 ${port}`);
+    gameManager.startNewGame();
+    broadcastToAll();
+  });
+}
 
 // 将 WebSocket 连接处理逻辑提取到单独的函数
 function handleWebSocketConnection(ws, req) {
@@ -523,7 +598,34 @@ function startNewGame() {
 
 // 6. 广播游戏状态的统一函数
 function broadcastGameState() {
-  handleWebSocketConnection(null, null);
+  const gameState = gameManager.gameState;
+  
+  clients.forEach((ws, clientId) => {
+    if (ws.readyState === WebSocket.OPEN) {
+      try {
+        const player = playerManager.players.get(clientId);
+        const user = playerManager.userInfo.get(clientId);
+        
+        const playerInfo = player ? {
+          clientId,
+          nickname: user?.nickname || '',
+          totalAsset: user?.totalAsset || 0,
+          cash: player.cash,
+          inGame: player.inGame
+        } : null;
+
+        ws.send(JSON.stringify({
+          type: 'gameState',
+          payload: {
+            ...gameState,
+            playerInfo
+          }
+        }));
+      } catch (error) {
+        console.error(`向客户端 ${clientId} 广播状态时出错:`, error);
+      }
+    }
+  });
 }
 
 // 添加初始化股价的函数
@@ -632,8 +734,21 @@ function handleJoinGame(ws, clientId) {
 // 修改交易处理逻辑
 function handleTrade(ws, clientId, data) {
   try {
+    console.log('开始处理交易请求:', {
+      clientId,
+      stockCode: data.stockCode,
+      action: data.action,
+      quantity: data.quantity
+    });
+
     // 检查玩家是否存在且在游戏中
     const player = playerManager.players.get(clientId);
+    console.log('当前玩家状态:', {
+      inGame: player?.inGame,
+      cash: player?.cash,
+      currentPositions: player?.positions
+    });
+
     if (!player || !player.inGame) {
       throw new Error('玩家未在游戏中');
     }
@@ -649,21 +764,18 @@ function handleTrade(ws, clientId, data) {
       throw new Error('游戏未在进行中');
     }
 
-    console.log('处理交易请求:', {
-      clientId,
-      stockCode: data.stockCode,
-      action: data.action,
-      quantity: data.quantity,
-      currentPrice: stock.price,
-      playerCash: player.cash
-    });
-
     // 执行交易
     const result = playerManager.handleTrade(clientId, {
       stockCode: data.stockCode,
       action: data.action,
       quantity: data.quantity,
       currentPrice: stock.price
+    });
+
+    console.log('交易执行结果:', {
+      newCash: result.newCash,
+      newPositions: player.positions,
+      returnedPosition: result.newPosition
     });
 
     // 发送交易结果
@@ -673,11 +785,17 @@ function handleTrade(ws, clientId, data) {
         success: true,
         message: `${data.action === 'buy' ? '买入' : '卖出'}成功`,
         newCash: result.newCash,
-        newPosition: result.newPosition
+        newPositions: player.positions
       }
     }));
 
-    // 广播最新状态
+    console.log('发送交易结果后的玩家状态:', {
+      cash: player.cash,
+      positions: player.positions
+    });
+
+    // 更新并广播游戏状态
+    gameManager.updateLeaderboard(playerManager);
     broadcastToAll();
 
   } catch (error) {
@@ -716,4 +834,19 @@ const gameStateMessage = {
 // 所有其他请求都返回 index.html
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
-}); 
+});
+
+// 设置卡片管理器的通知回调
+cardManager.setNotifyCallback((clientId, message) => {
+  const client = clients.get(clientId);
+  if (client && client.readyState === WebSocket.OPEN) {
+    try {
+      client.send(JSON.stringify(message));
+    } catch (error) {
+      console.error('发送卡片通知失败:', error);
+    }
+  }
+});
+
+// 启动服务器
+startServer(); 

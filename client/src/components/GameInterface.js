@@ -5,12 +5,14 @@ import {
   Card, 
   StockGrid, 
   StockCard, 
-  Button 
+  Button,
+  CommonButton
 } from './StyledComponents';
 import gameService from '../services/gameService';
 import config from '../config';
 import Leaderboard from './Leaderboard';
 import FunctionCard from './FunctionCard';
+import LuckyDraw from './LuckyDraw';
 
 const Header = styled.div`
   display: flex;
@@ -42,18 +44,46 @@ const Header = styled.div`
 
 const GameStatus = styled(Card)`
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   background: ${props => props.theme.accent};
+  padding: 1.5rem;
+  gap: 1rem;
   
-  .round-info {
-    font-size: 18px;
+  .status-text {
+    font-size: 1.2rem;
     font-weight: bold;
+    color: ${props => props.theme.text};
+    text-align: center;
   }
 
-  .timer {
-    font-size: 24px;
+  .round-info {
+    font-size: 1.4rem;
     font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .timer-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: ${props => props.theme.primary};
+    
+    .timer-icon {
+      font-size: 1.2rem;
+    }
+    
+    .timer {
+      font-size: 1.4rem;
+      font-weight: bold;
+    }
+    
+    .timer-text {
+      font-size: 1rem;
+      opacity: 0.8;
+    }
   }
 `;
 
@@ -122,6 +152,17 @@ const GameControls = styled.div`
   justify-content: flex-end;
 `;
 
+// 更新抽奖按钮样式
+const LuckyDrawButton = styled(CommonButton)`
+  margin-right: 10px;
+  background: linear-gradient(45deg, #FFB6C1, #FF69B4);
+`;
+
+// 更新其他按钮
+const GameButton = styled(CommonButton)`
+  // 可以添加特定样式
+`;
+
 const GameInterface = ({ user }) => {
   const [gameState, setGameState] = useState({
     status: 'waiting',
@@ -139,6 +180,7 @@ const GameInterface = ({ user }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30);
   const [error, setError] = useState(null);
+  const [showLuckyDraw, setShowLuckyDraw] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -332,6 +374,30 @@ const GameInterface = ({ user }) => {
     gameService.joinGame();
   };
 
+  // 处理抽奖结果
+  const handleDraw = (index) => {
+    if (!config.luckyDraw || !config.luckyDraw.cost) {
+      console.error('抽奖配置未找到');
+      return;
+    }
+
+    // 扣除抽奖费用
+    const newTotalAsset = gameState.playerInfo.totalAsset - config.luckyDraw.cost;
+    setGameState(prev => ({
+      ...prev,
+      playerInfo: {
+        ...prev.playerInfo,
+        totalAsset: newTotalAsset
+      }
+    }));
+    
+    // 这里可以添加中奖奖品的处理逻辑
+    setTimeout(() => {
+      alert('恭喜获得神秘奖品！');
+      setShowLuckyDraw(false);
+    }, 1000);
+  };
+
   // 如果有错误，显示错误信息
   if (error) {
     return (
@@ -361,31 +427,35 @@ const GameInterface = ({ user }) => {
           
           <GameControls>
             {!gameState.playerInfo.inGame ? (
-              <Button 
+              <GameButton 
                 variant="primary" 
                 onClick={handleJoinGame}
                 disabled={!isConnected || gameState.status === 'finished'}
               >
                 进入游戏 (¥{config.entryFee})
-              </Button>
+              </GameButton>
             ) : (
               <FunctionCard
                 disabled={!gameState.playerInfo?.inGame || gameState.status !== 'running'}
                 gameState={gameState}
               />
             )}
+            {gameState.playerInfo.totalAsset >= (config.luckyDraw?.cost || Infinity) && (
+              <LuckyDrawButton
+                variant="secondary"
+                onClick={() => setShowLuckyDraw(true)}
+              >
+                抽个卡 (¥{config.luckyDraw?.cost || 648})
+              </LuckyDrawButton>
+            )}
           </GameControls>
         </GameHeader>
 
         <GameStatus>
           {!gameState.playerInfo.inGame ? (
-            <Button 
-              variant="primary" 
-              onClick={handleJoinGame}
-              disabled={!isConnected || gameState.status === 'finished'}
-            >
-              进入游戏 (¥{config.entryFee})
-            </Button>
+            <div className="status-text">
+              {!isConnected ? '正在连接服务器...' : '等待加入游戏'}
+            </div>
           ) : (
             <>
               <div className="round-info">
@@ -398,7 +468,11 @@ const GameInterface = ({ user }) => {
                 )}
               </div>
               {gameState.status === 'running' && (
-                <div className="timer">{timeLeft}s</div>
+                <div className="timer-container">
+                  <span className="timer-icon">⏱️</span>
+                  <span className="timer">{timeLeft}</span>
+                  <span className="timer-text">秒后更新</span>
+                </div>
               )}
             </>
           )}
@@ -434,7 +508,7 @@ const GameInterface = ({ user }) => {
                   持仓：{stock.position || 0} 股
                   {stock.position > 0 && (
                     <span className="avg-price">
-                      均价：¥{stock.averagePrice}
+                      均价：¥{Math.round(stock.averagePrice)}
                     </span>
                   )}
                 </div>
@@ -461,6 +535,13 @@ const GameInterface = ({ user }) => {
       </div>
 
       <Leaderboard gameState={gameState} />
+
+      <LuckyDraw
+        isOpen={showLuckyDraw}
+        onClose={() => setShowLuckyDraw(false)}
+        onDraw={handleDraw}
+        disabled={gameState.playerInfo.totalAsset < config.luckyDraw.cost}
+      />
     </GameLayout>
   );
 };

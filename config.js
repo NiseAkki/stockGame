@@ -4,7 +4,7 @@ const config = {
   entryFee: 1000,             // 游戏入场费
   
   // 对局设置
-  maxRounds: 60,              // 统一设置为60回合
+  maxRounds: 30,              // 统一设置为60回合
   roundInterval: 60,          // 统一设置为60秒
   matchInterval: 300,         // 统一设置为300秒
   

@@ -207,4 +207,56 @@ export const MatchInterval = styled(Card)`
     font-weight: bold;
     color: ${props => props.theme.primary};
   }
+`;
+
+// 添加或更新通用按钮样式
+export const CommonButton = styled.button`
+  padding: 0.8rem 1.5rem;
+  font-size: 1.1rem;
+  font-weight: bold;
+  border: none;
+  border-radius: 25px;
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  transition: all 0.3s ease;
+  background: ${props => {
+    if (props.disabled) return '#cccccc';
+    if (props.variant === 'primary') return 'linear-gradient(45deg, #FF69B4, #FF1493)';
+    if (props.variant === 'secondary') return 'linear-gradient(45deg, #FFB6C1, #FF69B4)';
+    return 'linear-gradient(45deg, #FF69B4, #FF1493)';
+  }};
+  color: white;
+  box-shadow: ${props => props.disabled ? 'none' : '0 4px 15px rgba(255,105,180,0.3)'};
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+
+  &:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.2),
+      transparent
+    );
+    transition: 0.5s;
+  }
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255,105,180,0.4);
+    
+    &:before {
+      left: 100%;
+    }
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+    box-shadow: 0 2px 10px rgba(255,105,180,0.3);
+  }
 `; 

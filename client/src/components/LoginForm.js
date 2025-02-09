@@ -1,37 +1,92 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { Button } from './StyledComponents';
 import authService from '../services/authService';
 
+// 样式组件
 const LoginContainer = styled.div`
-  max-width: 400px;
-  margin: 100px auto;
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: #f5f5f5;
+`;
+
+const LoginCard = styled.div`
   background: white;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 400px;
+`;
+
+const Title = styled.h1`
+  text-align: center;
+  color: #333;
+  margin-bottom: 2rem;
+  font-size: 1.8rem;
+`;
+
+const Form = styled.form`
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 `;
 
 const Input = styled.input`
-  width: 100%;
-  padding: 10px;
-  margin: 10px 0;
+  padding: 0.8rem;
   border: 1px solid #ddd;
-  border-radius: 5px;
+  border-radius: 4px;
+  font-size: 1rem;
+  width: 100%;
+  box-sizing: border-box;
+
+  &:focus {
+    outline: none;
+    border-color: #0099ff;
+  }
+`;
+
+const Button = styled.button`
+  padding: 0.8rem;
+  background-color: #0099ff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: #0077cc;
+  }
+
+  &:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+  }
+`;
+
+const RegisterLink = styled.div`
+  text-align: center;
+  margin-top: 1rem;
+
+  a {
+    color: #0099ff;
+    text-decoration: none;
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
 `;
 
 const ErrorMessage = styled.div`
-  color: red;
-  margin: 10px 0;
-`;
-
-const SwitchButton = styled.button`
-  background: none;
-  border: none;
-  color: #2196f3;
-  cursor: pointer;
-  margin-top: 10px;
-  text-decoration: underline;
+  color: #ff4444;
+  text-align: center;
+  margin-top: 1rem;
 `;
 
 const LoginForm = ({ onLogin }) => {
@@ -80,60 +135,45 @@ const LoginForm = ({ onLogin }) => {
     }
   };
 
-  const handleChange = (e) => {
-    setForm(prev => ({
-      ...prev,
-      [e.target.name]: e.target.value
-    }));
-  };
-
   return (
     <LoginContainer>
-      <h2>{isLogin ? '登录' : '注册'}</h2>
-      {error && <ErrorMessage>{error}</ErrorMessage>}
-      
-      <form onSubmit={handleSubmit}>
-        <Input
-          name="username"
-          type="text"
-          placeholder="用户名"
-          value={form.username}
-          onChange={handleChange}
-          disabled={loading}
-        />
-        <Input
-          name="password"
-          type="password"
-          placeholder="密码"
-          value={form.password}
-          onChange={handleChange}
-          disabled={loading}
-        />
-        {!isLogin && (
+      <LoginCard>
+        <Title>{isLogin ? '登录' : '注册'}</Title>
+        <Form onSubmit={handleSubmit}>
           <Input
-            name="nickname"
             type="text"
-            placeholder="昵称"
-            value={form.nickname}
-            onChange={handleChange}
-            disabled={loading}
+            name="username"
+            placeholder="用户名"
+            value={form.username}
+            onChange={e => setForm({...form, username: e.target.value})}
           />
-        )}
-        <Button 
-          type="submit" 
-          variant="primary"
-          disabled={loading}
-        >
-          {loading ? '处理中...' : (isLogin ? '登录' : '注册')}
-        </Button>
-      </form>
-
-      <SwitchButton 
-        onClick={() => !loading && setIsLogin(!isLogin)}
-        disabled={loading}
-      >
-        {isLogin ? '没有账号？点击注册' : '已有账号？点击登录'}
-      </SwitchButton>
+          <Input
+            type="password"
+            name="password"
+            placeholder="密码"
+            value={form.password}
+            onChange={e => setForm({...form, password: e.target.value})}
+          />
+          {!isLogin && (
+            <Input
+              type="text"
+              name="nickname"
+              placeholder="昵称"
+              value={form.nickname}
+              onChange={e => setForm({...form, nickname: e.target.value})}
+            />
+          )}
+          <Button type="submit" disabled={loading}>
+            {loading ? '处理中...' : (isLogin ? '登录' : '注册')}
+          </Button>
+        </Form>
+        {error && <ErrorMessage>{error}</ErrorMessage>}
+        <RegisterLink>
+          <a onClick={() => setIsLogin(!isLogin)}>
+            {isLogin ? '没有账号？点击注册' : '已有账号？点击登录'}
+          </a>
+        </RegisterLink>
+      </LoginCard>
     </LoginContainer>
   );
 };

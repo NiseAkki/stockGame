@@ -9,7 +9,9 @@ class GameService {
       onStockUpdate: null,
       onTradeResult: null,
       onSettlement: null,
-      onError: null
+      onError: null,
+      onCardsUpdate: null,
+      onCardUseResult: null
     };
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 5;
@@ -58,14 +60,17 @@ class GameService {
 
           if (this.user) {
             console.log('发送用户初始化信息:', this.user);
+            const initMessage = {
+              type: 'init',
+              user: this.user
+            };
+            
             const savedState = this.loadGameState();
             if (savedState) {
-              this.ws.send(JSON.stringify({
-                type: 'init',
-                user: this.user,
-                savedState: savedState
-              }));
+              initMessage.savedState = savedState;
             }
+            
+            this.ws.send(JSON.stringify(initMessage));
           }
           resolve();
         };
@@ -125,6 +130,7 @@ class GameService {
           this.callbacks.onStockUpdate?.(data.payload);
           break;
         case 'tradeResult':
+          console.log('收到交易结果:', data.payload);
           this.callbacks.onTradeResult?.(data.payload);
           break;
         case 'settlement':
@@ -158,6 +164,14 @@ class GameService {
           break;
         case 'error':
           this.callbacks.onError?.(data.message);
+          break;
+        case 'cards':
+          console.log('收到卡片更新:', data.cards);
+          this.callbacks.onCardsUpdate?.(data.cards);
+          break;
+        case 'cardUseResult':
+          console.log('收到卡片使用结果:', data.payload);
+          this.callbacks.onCardUseResult?.(data.payload);
           break;
       }
     } catch (error) {
@@ -283,6 +297,31 @@ class GameService {
       }
     }
     return null;
+  }
+
+  useCard(cardId, targetId) {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      console.error('WebSocket未连接');
+      return;
+    }
+
+    console.log('发送使用卡片请求:', { cardId, targetId });
+    this.ws.send(JSON.stringify({
+      type: 'useCard',
+      cardId,
+      targetId
+    }));
+  }
+
+  requestCards() {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      console.error('WebSocket未连接');
+      return;
+    }
+
+    this.ws.send(JSON.stringify({
+      type: 'getCards'
+    }));
   }
 }
 
